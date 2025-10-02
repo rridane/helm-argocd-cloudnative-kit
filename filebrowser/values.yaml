@@ -1,0 +1,38 @@
+---
+namespace: filebrowser
+
+replicas: 1
+
+image: filebrowser/filebrowser:v2-s6
+
+service:
+  port: 80
+
+storageClassName: ""
+volumes:
+  - name: filebrowser-db
+    storage: 20Gi
+    mount_path: "/database/"
+    sub_path: "filebrowser.db"
+    create_nfs_pv: false
+
+#volumes:
+#  - name: filebrowser-db
+#    storage: 20Gi
+#    mount_path: "/database/"
+#    sub_path: "filebrowser.db"
+#    create_nfs_pv: true
+#    nfs_path: "/mnt/data/kube_data/filebrowser"
+#    nfs_server: nfs_ip
+#  - name: filebrowser-mntdata
+#    storage: 30Gi
+#    mount_path: "/srv/mntdata"
+#    create_nfs_pv: true
+#    nfs_server: nfs_ip
+#    nfs_path: "/mnt/data/kube_data"
+
+labels:
+  app.kubernetes.io/name: filebrowser
+  app.kubernetes.io/part-of: platform
+  environment: rct
+---

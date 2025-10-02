@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ $.Values.namespace }}
+  name: filebrowser
+  labels:
+    app: filebrowser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- range $key, $value := $.Values.labels }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- range $key, $value := $.Values.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      containers:
+        - name: filebrowser
+          image: {{ $.Values.image }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          volumeMounts:
+            - name: filebrowser-config
+              mountPath: /.filebrowser.json
+              subPath: .filebrowser.json
+          {{- range $.Values.volumes }}
+            - name: {{ .name }}
+              mountPath: {{ .mount_path }}
+            {{- if .sub_path }}
+              subPath: {{ .sub_path }}
+            {{- end }}
+          {{- end}}
+      volumes:
+        - name: filebrowser-config
+          configMap:
+            name: filebrowser-config
+          {{- range $.Values.volumes }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ .name }}-claim
+          {{- end }}
+---

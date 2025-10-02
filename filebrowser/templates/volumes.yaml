@@ -1,0 +1,31 @@
+{{- range $.Values.volumes -}}
+  {{ if .create_nfs_pv }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .name }}
+spec:
+  capacity:
+    storage: {{ .storage }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: {{ .nfs_server }}
+    path: {{ .nfs_path }}
+  {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name }}-claim
+  namespace: {{ $.Values.namespace }}
+spec:
+  storageClassName: {{ $.Values.storageClassName}}
+  accessModes:
+    - ReadWriteMany
+  volumeName: {{ .name }}
+  resources:
+    requests:
+      storage: {{ .storage }}
+  {{- end }}
