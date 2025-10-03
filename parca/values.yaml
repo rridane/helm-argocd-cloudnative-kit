@@ -1,0 +1,61 @@
+############################
+### SERVER             #####
+############################
+namespace: parca
+
+server:
+  enabled: true
+  image:
+    repository: ghcr.io/parca-dev/parca
+    tag: v0.24.2
+
+  replicas: 1
+  resources: {}
+  service:
+    port: 7070
+  labels:
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/instance: parca
+    app.kubernetes.io/name: parca
+
+bucket:
+  type: FILESYSTEM
+  config:
+    directory: /var/lib/parca
+
+#bucket:
+#  type: "S3"
+#  config:
+#    bucket": "bucky",
+#    endpoint": "some.s3.endpoint:8000",
+#    secret_key": "foo",
+#    access_key": "bar",
+#    insecure: true
+
+
+############################
+### AGENT              #####
+############################
+
+agent:
+  image:
+    repository: ghcr.io/parca-dev/parca-agent
+    tag: v0.42.0
+  labels:
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/instance: parca-agent
+    app.kubernetes.io/name: parca-agent
+  resources: {}
+  service:
+    enabled: true
+    port: 7071
+    type: ClusterIP
+  config: |
+    # Aucune configuration supplémentaire par défaut
+  #  config: |
+  #    relabel_configs:
+  #      - source_labels: [namespace]
+  #        regex: ".*"
+  #        action: keep
+  extraArgs:
+    - --remote-store-insecure-skip-verify

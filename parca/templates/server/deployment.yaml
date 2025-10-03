@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parca
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- range $key, $value := $.Values.server.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    app.kubernetes.io/version: {{ $.Values.server.image.tag }}
+spec:
+  replicas: {{ $.Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- range $key, $value := $.Values.server.labels }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- range $key, $value := $.Values.server.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        app.kubernetes.io/version: {{ $.Values.server.image.tag }}
+    spec:
+      containers:
+        - args:
+          - /parca
+          - --http-address=:{{ .Values.server.service.port }}
+          - --config-path=/etc/parca/parca.yaml
+          - --log-level=info
+          - --cors-allowed-origins=*
+          - --debuginfod-upstream-servers=debuginfod.systemtap.org
+          - --debuginfod-http-request-timeout=5m
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          name: parca
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          livenessProbe:
+            exec:
+              command:
+                - /grpc_health_probe
+                - -v
+                - -addr=:7070
+            initialDelaySeconds: 5
+          ports:
+            - containerPort: {{ .Values.server.service.port }}
+              name: http
+          readinessProbe:
+            exec:
+              command:
+                - /grpc_health_probe
+                - -v
+                - -addr=:7070
+            initialDelaySeconds: 10
+          resources: {{ $.Values.server.resources }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /etc/parca
+              name: config
+            - mountPath: /var/lib/parca
+              name: data
+      securityContext:
+        fsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+        supplementalGroups:
+          - 65534
+      serviceAccountName: parca
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - name: config
+          configMap:
+            name: parca
+        - name: data
+          emptyDir: {}

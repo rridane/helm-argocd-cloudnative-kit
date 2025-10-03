@@ -1,0 +1,6 @@
+apiVersion: v2
+name: parca
+description: Parca Server and Agent for continuous profiling on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "v0.42.0" # version par défaut de l’agent

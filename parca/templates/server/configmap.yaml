@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data
+  namespace: {{ $.Values.namespace }}
+  labels:
+    {{- range $key, $value := $.Values.server.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    app.kubernetes.io/version: {{ $.Values.server.image.tag }}
+data:
+  parca.yaml: |
+    object_storage:
+      bucket:
+{{ toYaml $.Values.bucket | indent 8 }}
