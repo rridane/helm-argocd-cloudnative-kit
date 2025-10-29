@@ -1,0 +1,11 @@
+resource:
+  attributes:
+    - action: insert
+      key: namespace
+      from_attribute: k8s.namespace.name
+    - action: insert
+      key: loki.resource.labels
+      value: namespace, body, pod
+    - action: insert
+      key: loki.format
+      value: raw

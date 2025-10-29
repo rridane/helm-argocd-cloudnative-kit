@@ -1,0 +1,27 @@
+namespace: observability
+name: invoiced
+
+replicas: 3
+serviceAccountName: otelcontribcol
+image: otel/opentelemetry-collector-contrib:0.81.0
+featureGates:
+  - "--feature-gates=filelog.allowHeaderMetadataParsing"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 500Mi
+  requests:
+    cpu: 200m
+    memory: 500Mi
+
+labels:
+  app: opentelemetry
+  component: otel-collector
+
+# Répertoires contenant les fragments YAML
+receiversDir: "files/default/receivers"
+processorsDir: "files/default/processors"
+exportersDir: "files/default/exporters"
+connectorsDir: "files/default/connectors"
+pipelinesFile: "files/default/pipelines.yaml"

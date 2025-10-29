@@ -1,0 +1,39 @@
+tail_sampling:
+  decision_wait: 30s
+  num_traces: 50000
+  expected_new_traces_per_sec: 0
+  policies:
+    [
+      {
+        name: request-errors-policy,
+        type: numeric_attribute,
+        numeric_attribute: { key: http.status_code, min_value: 400, max_value: 405}
+      },
+      {
+        name: server-errors-policy,
+        type: numeric_attribute,
+        numeric_attribute: { key: http.status_code, min_value: 500, max_value: 505}
+      },
+      {
+        name: exception-policy,
+        type: status_code,
+        status_code: {status_codes: [ERROR]},
+      },
+      {
+        name: status-code-2-policy,
+        type: numeric_attribute,
+        numeric_attribute: { key: status.code, min_value: 2, max_value: 2}
+      },
+      {
+        name: exception-event-policy,
+        type: ottl_condition,
+        ottl_condition:
+          {
+            error_mode: ignore,
+            span: [],
+            spanevent: [
+              "attributes[\"exception.message\"] != \"\""
+            ]
+          }
+      }
+    ]

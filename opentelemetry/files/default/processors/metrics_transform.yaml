@@ -1,0 +1,7 @@
+metricstransform:
+  transforms:
+    include: queueSize
+    action: update
+    new_name: queue_size_logs
+    match_type: regexp
+    experimental_match_labels: {"logRecordProcessorType": "BatchLogRecordProcessor" }

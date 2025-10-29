@@ -1,0 +1,4 @@
+prometheusremotewrite:
+  endpoint: http://prometheus-grafana-kube-pr-prometheus.monitoring.svc:9090/api/v1/write
+  target_info:
+    enabled: true

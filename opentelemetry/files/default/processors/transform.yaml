@@ -1,0 +1,15 @@
+transform:
+  error_mode: ignore
+  log_statements:
+    - context: log
+      statements:
+        - set(attributes["trace_id"], trace_id.string) where trace_id.string != "00000000000000000000000000000000"
+        - set(resource.attributes["pod"], attributes["k8s.pod.name"])
+        - set(body, Concat([body, "-- Exception Type --", attributes["exception.type"], "-- Exception Message --", attributes["exception.message"], "-- StackTrace --", attributes["exception.stacktrace"]], "\n\n")) where attributes["exception.message"] != nil
+        - set(body, Concat([body, trace_id.string], "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tt=")) where trace_id.string != "00000000000000000000000000000000"
+  trace_statements:
+    - context: spanevent
+      statements:
+        - set(span.attributes["exception_message"], attributes["exception.message"]) where attributes != nil
+        - set(span.attributes["exception_type"], attributes["exception.type"]) where attributes != nil
+        - set(span.attributes["exception_stacktrace"], attributes["exception.stacktrace"]) where attributes != nil

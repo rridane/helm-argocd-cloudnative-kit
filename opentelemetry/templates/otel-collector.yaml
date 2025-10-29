@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- toYaml .Values.labels | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- toYaml .Values.labels | nindent 8 }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: otel-collector
+          image: {{ .Values.image }}
+          args:
+            - "--config=/etc/otelcol-contrib/config.yaml"
+            {{- range .Values.featureGates }}
+            - "{{ . }}"
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /etc/otelcol-contrib/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: varlog
+              mountPath: /var/log/pods
+              readOnly: true
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+            - containerPort: 8000
+      volumes:
+        - name: data
+          configMap:
+            name: otel-configmap
+        - name: varlog
+          hostPath:
+            path: /var/log/pods/

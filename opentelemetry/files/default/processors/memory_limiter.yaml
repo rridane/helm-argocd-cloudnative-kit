@@ -1,0 +1,4 @@
+memory_limiter:
+  check_interval: 5s
+  limit_mib: 448
+  spike_limit_mib: 64

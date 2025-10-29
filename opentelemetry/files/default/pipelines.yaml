@@ -1,0 +1,39 @@
+pipelines:
+  traces/clickhouse:
+    receivers: [otlp]
+    processors: [tail_sampling, memory_limiter, transform]
+    exporters: [clickhouse]
+  traces/tempo_and_spanmetrics:
+    receivers: [otlp]
+    processors: [batch, memory_limiter]
+    #    exporters: [otlp]
+    #    exporters: []
+    exporters: [otlp, spanmetrics]
+  #  logs/clickhouse:
+  #    receivers: [otlp]
+  #    processors: [tail_sampling, memory_limiter, transform]
+  #    exporters: [clickhouse]
+  logs/ppkube_loki:
+    receivers: [otlp]
+    processors: [batch, memory_limiter, transform, resource, attributes]
+    exporters: [loki]
+  metrics:
+    #    receivers: [otlp,spanmetrics]
+    receivers: [spanmetrics]
+    processors: [batch, memory_limiter, metricstransform]
+    exporters: [prometheus]
+  logs/events:
+    receivers: [k8s_events]
+    processors: [batch, memory_limiter]
+    exporters: [loki]
+      #  metrics/spanmetrics:
+      #    receivers: [spanmetrics]
+      #    processors: [batch, memory_limiter, metricstransform]
+      #    exporters: [prometheusremotewrite]
+      #  logs/brute:
+      #    receivers: [otlp]
+      #    processors: []
+      #    exporters: []
+
+
+    #    exporters: [otlp, spanmetrics]

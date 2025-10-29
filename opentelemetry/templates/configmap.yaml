@@ -1,0 +1,54 @@
+{{- /*
+  Génère le ConfigMap à partir des fragments receivers/processors/exporters/connectors
+  et d’un unique fichier pipelines.yaml.
+*/ -}}
+
+{{- $conf := dict
+  "receivers"  dict
+  "processors" dict
+  "exporters"  dict
+  "connectors" dict
+-}}
+
+{{- $dirs := dict
+  "receivers"  .Values.receiversDir
+  "processors" .Values.processorsDir
+  "exporters"  .Values.exportersDir
+  "connectors" .Values.connectorsDir
+-}}
+
+# 🔹 Fusion des fichiers par répertoire
+{{- range $kind, $path := $dirs }}
+  {{- range $file, $_ := ($.Files.Glob (printf "%s/*.y*ml" $path)) }}
+    {{- $yaml := fromYaml ($.Files.Get $file) }}
+    {{- $kindConf := (get $conf $kind) }}
+    {{- $newConf := (merge $kindConf $yaml) }}
+    {{- $_ := set $conf $kind $newConf }}
+  {{- end }}
+{{- end }}
+
+# 🔹 Chargement du fichier pipelines unique
+{{- $pipelines := dict }}
+{{- if (.Files.Get .Values.pipelinesFile) }}
+  {{- $pipelines = fromYaml (.Files.Get .Values.pipelinesFile) }}
+{{- else }}
+  {{- fail (printf "❌ Fichier pipelines introuvable: %s" .Values.pipelinesFile) }}
+{{- end }}
+
+# 🔹 Construction finale de la configuration
+{{- $otelConfig := dict
+  "receivers"  (get $conf "receivers")
+  "processors" (get $conf "processors")
+  "exporters"  (get $conf "exporters")
+  "connectors" (get $conf "connectors")
+  "service"    $pipelines
+-}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-configmap
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |
+{{ toYaml $otelConfig | indent 4 }}

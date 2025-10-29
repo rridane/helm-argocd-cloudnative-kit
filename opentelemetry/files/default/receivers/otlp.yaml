@@ -1,0 +1,10 @@
+otlp:
+  protocols:
+    grpc:
+      max_recv_msg_size_mib: 100
+      read_buffer_size: 64 # Roughly 200MB in bytes
+      write_buffer_size: 64 # Roughly 200MB in bytes
+      max_concurrent_streams: 16
+      keepalive:
+        server_parameters:
+          max_connection_idle: 10s
