@@ -32,7 +32,7 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-    name: {{ printf "%s-override-header-%d" $route.name $index }}
+    name: {{ printf "%s-override-headers-%d" $route.name $index }}
     namespace: {{ $namespace }}
 spec:
     headers:
