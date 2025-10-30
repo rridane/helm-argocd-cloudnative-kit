@@ -1,0 +1,36 @@
+{{- range $appName, $app := $.Values.applications }}
+  {{- $namespace := $app.namespace }}
+  {{- range $route := $app.routes }}
+  {{ include "process_middlewares" (dict "namespace" $namespace "route" $route) }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $route.name }}
+  namespace: {{ $namespace }}
+spec:
+  parentRefs:
+    - name: {{ $.Values.defaultGateway.name }}
+      namespace: {{ $.Values.defaultGateway.namespace }}
+  hostnames:
+    - {{ $route.host }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $route.pathPrefix }}
+      {{- if $route.middlewares }}
+      filters:
+        {{- range $index, $mw := $route.middlewares }}
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: {{ printf "%s-%s-%d" $route.name $mw.type $index }}
+        {{- end }}
+      {{- end }}
+      backendRefs:
+        - name: {{ $route.targetService }}
+          port: {{ $route.port }}
+  {{- end }}
+  {{- end }}

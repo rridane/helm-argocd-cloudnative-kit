@@ -1,4 +1,4 @@
-otlp:
+otlp/tempo:
   endpoint: tempo.tempo.svc:4317
   tls:
     insecure: true

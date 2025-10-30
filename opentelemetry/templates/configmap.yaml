@@ -43,7 +43,7 @@
   "connectors" (get $conf "connectors")
   "service"    $pipelines
 -}}
-
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:

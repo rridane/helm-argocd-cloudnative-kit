@@ -3,7 +3,7 @@ name: invoiced
 
 replicas: 3
 serviceAccountName: otelcontribcol
-image: otel/opentelemetry-collector-contrib:0.81.0
+image: otel/opentelemetry-collector-contrib:0.138.0
 featureGates:
   - "--feature-gates=filelog.allowHeaderMetadataParsing"
 

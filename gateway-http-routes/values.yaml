@@ -1,0 +1,27 @@
+defaultGateway:
+  name: traefik-gateway
+  namespace: ingress-controller
+
+applications:
+  monitoring:
+    namespace: monitoring
+    routes:
+      - name: to-grafana
+        host: marroute1.yaml
+        pathPrefix: /
+        port: 80
+        targetService: prometheus-grafana
+        middlewares:
+          - type: strip-prefix
+            prefix: /grafana
+          - type: add-prefix
+            prefix: /grafana
+          - type: override-headers
+            key: X-Frame-Options
+            value: SAMEORIGIN
+      - name: to-prometheus
+        host: myprometheus.fr
+        pathPrefix: /
+        port: 9090
+        targetService: prometheus-grafana-kube-pr-prometheus
+        middlewares: []

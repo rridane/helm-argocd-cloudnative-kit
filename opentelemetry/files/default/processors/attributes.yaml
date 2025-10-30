@@ -1,0 +1,8 @@
+attributes:
+  actions:
+    - action: insert
+      key: trace_id
+      from_attribute: trace_id
+    - action: insert
+      key: loki.attribute.labels
+      value: trace_id

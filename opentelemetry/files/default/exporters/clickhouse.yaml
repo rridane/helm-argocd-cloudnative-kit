@@ -1,6 +1,5 @@
 clickhouse:
   endpoint: tcp://clickhouse-clickhouse.clickhouse.svc:9000?dial_timeout=10s&compress=lz4
-  ttl_days: 1
   username: "default"
   password: "default"
   timeout: 5s
