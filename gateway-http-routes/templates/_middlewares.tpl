@@ -4,7 +4,7 @@
 {{- range $index, $mw := $route.middlewares }}
 {{- if eq $mw.type "strip-prefix" }}
 ---
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
     name: {{ printf "%s-strip-prefix-%d" $route.name $index }}
@@ -17,7 +17,7 @@ spec:
 
 {{- if eq $mw.type "add-prefix" }}
 ---
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
     name: {{ printf "%s-add-prefix-%d" $route.name $index }}
@@ -29,7 +29,7 @@ spec:
 
 {{- if eq $mw.type "override-headers" }}
 ---
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
     name: {{ printf "%s-override-header-%d" $route.name $index }}
