@@ -1,0 +1,32 @@
+{{- /*
+ Génère dynamiquement des PersistentVolumeClaim depuis .Values.claims
+ Chaque section (ex: security, monitoring) correspond à un ensemble de PVCs dans un namespace donné.
+*/ -}}
+
+{{- $defaultStorageClass := .Values.defaultStorageClass | default "standard" -}}
+{{- $defaultAccessModes := .Values.defaultAccessMode | default (list "ReadWriteOnce") -}}
+
+{{- range $groupName, $group := .Values.claims }}
+  {{- $namespace := $group.namespace | default "default" -}}
+  {{- range $pvc := $group.pvc }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvc.name }}
+  namespace: {{ $namespace }}
+  annotations:
+    {{- if $pvc.volumeIri }}
+    nfs.io/volume-iri: "{{ $pvc.volumeIri }}"
+    {{- end }}
+spec:
+  accessModes:
+    {{- range $mode := ($pvc.accessModes | default $defaultAccessModes) }}
+    - {{ $mode }}
+    {{- end }}
+  storageClassName: {{ $pvc.storageClass | default $defaultStorageClass }}
+  resources:
+    requests:
+      storage: {{ $pvc.storageRequest | default "10Gi" }}
+  {{- end }}
+{{- end }}

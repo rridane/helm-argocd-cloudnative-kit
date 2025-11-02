@@ -1,0 +1,42 @@
+apiVersion: v2
+name: pvc-generator
+description: |
+  Lightweight Helm chart to dynamically generate PersistentVolumeClaims (PVCs)
+  from a simple declarative YAML structure.
+  Ideal for GitOps workflows (e.g. ArgoCD) where persistent data must be defined
+  alongside application configurations.
+
+type: application
+version: 0.1.1
+appVersion: "1.0.0"
+
+keywords:
+  - kubernetes
+  - volumes
+  - pvc
+  - storage
+  - nfs
+  - gitops
+  - argocd
+
+home: https://github.com/rridane/helm-argocd-management-kit/tree/main/pvc-generator
+sources:
+  - https://github.com/rridane/helm-argocd-management-kit
+  - https://artifacthub.io
+
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: storage
+  artifacthub.io/links: |
+    - name: Source
+      url: https://github.com/rridane/helm-argocd-management-kit/tree/main/pvc-generator
+    - name: Maintainer
+      url: https://github.com/rridane
+  artifacthub.io/prerelease: "false"
+
+dependencies: []
