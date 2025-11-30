@@ -1,0 +1,184 @@
+#############################
+### METADATA
+#############################
+
+clusterName: "my-cluster"
+
+labels: {}
+annotations: {}
+fenceInstances: []
+
+#############################
+### GENERAL CONFIGURATION
+#############################
+
+instances: 1
+imageCatalogRef: null
+
+#############################
+### STORAGE
+#############################
+
+storage: "1Gi"
+storageClass: ""
+pvcTemplate: null
+
+walStorage: null
+
+#############################
+### SUPERUSER
+#############################
+
+enableSuperuserAccess: false
+enableSuperuserSecret: null
+
+#############################
+### EXTERNAL CLUSTERS
+#############################
+
+externalClusters: []
+
+#############################
+### PROBES
+#############################
+
+probes:
+  startup:
+    enabled: false
+    type: pg_isready
+  liveness:
+    enabled: false
+  readiness:
+    enabled: false
+
+
+#############################
+### SHUTDOWN SETTINGS
+#############################
+
+smartShutDownTimeout: 180
+stopDelay: 1800
+switchoverDelay: 3600
+failoverDelay: 30
+
+#############################
+### AFFINITY
+#############################
+
+affinity: {}
+
+#############################
+### RESOURCES
+#############################
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+
+#############################
+### PRIMARY UPDATE STRATEGY
+#############################
+
+primaryUpdateStrategy: "unsupervised"
+primaryUpdateMethod: "restart"
+
+#############################
+### MANAGED ROLES
+#############################
+
+managed:
+  roles: []
+
+#############################
+### POSTGRESQL CONFIG
+#############################
+
+postgresql:
+  parameters: {}
+  pg_hba: []
+  pg_ident: []
+  shared_preload_libraries: []
+  synchronous: {}
+  extensions: []
+
+#############################
+### TABLESPACES
+#############################
+
+tablespaces: []
+
+
+#############################
+### PLUGINS
+#############################
+
+plugins: []
+
+
+#############################
+### PROJECTED VOLUME TEMPLATE
+#############################
+
+projectedVolumeTemplate: null
+
+
+#############################
+### EPHEMERAL VOLUMES
+#############################
+
+ephemeralVolumesSizeLimit: {}
+ephemeralVolumeSource: null
+
+
+#############################
+### PDB
+#############################
+
+enablePDB: true
+
+
+#############################
+### NODE MAINTENANCE
+#############################
+
+nodeMaintenanceWindow:
+  inProgress: false
+  reusePVC: true
+
+
+#############################
+### ENV VARS
+#############################
+
+env: []
+envFrom: []
+
+
+#############################
+### MONITORING
+#############################
+
+monitoring:
+  additionalCustomQueriesConfigMap: []
+
+#############################
+### LOG LEVEL
+#############################
+
+logLevel: "info"
+
+#############################
+### BOOTSTRAP
+#############################
+
+bootstrap: {}
+
+databases: []
+poolers: []
+monitors: []
+customQueriesConfigMap: null

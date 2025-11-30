@@ -1,0 +1,109 @@
+{{- if and .Values.bootstrap.initdb (or .Values.bootstrap.recovery .Values.bootstrap.pg_basebackup) }}
+{{- fail "bootstrap: only one of initdb, recovery, pg_basebackup must be defined" }}
+{{- end }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.clusterName }}
+  {{- if .Values.annotations }}
+  annotations:
+    {{- include "cloudnative.annotations" . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "cloudnative.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.instances }}
+  {{- with .Values.imageCatalogRef }}
+  imageCatalogRef:
+  {{- include "cloudnative.image_catalog_ref" . | nindent 4 -}}
+  {{- end }}
+  storage:
+    size: {{ .Values.storage }}
+    storageClass: {{ .Values.storageClass }}
+    {{- with .Values.pvcTemplate }}
+    pvcTemplate:
+    {{- include "cloudnative.storage.pvc_template" . | nindent 6 }}
+    {{- end }}
+  {{- with .Values.walStorage }}
+  walStorage:
+    size: {{ .size }}
+    storageClass: {{ .storageClass }}
+  {{- end }}
+  {{- if .Values.enableSuperuserAccess }}
+  enableSuperuserAccess: {{ .Values.enableSuperuserAccess }}
+  {{- end }}
+  {{- if .Values.enableSuperuserSecret }}
+  enableSuperuserSecret: {{ .Values.enableSuperuserSecret }}
+  {{- end }}
+  {{- if .Values.externalClusters -}}
+  externalClusters:
+  {{- include "cloudnative.external_clusters" . | nindent 2 }}
+  {{- end }}
+  {{- if any .Values.probes.startup.enabled .Values.probes.liveness.enabled .Values.probes.readiness.enabled -}}
+  probes:
+  {{- include "cloudnative.probes" . | nindent 2 }}
+  {{- end }}
+  smartShutDownTimeout: {{ .Values.smartShutDownTimeout | quote }}
+  stopDelay: {{ .Values.stopDelay | quote }}
+  switchoverDelay: {{ .Values.switchoverDelay | quote }}
+  failoverDelay: {{ .Values.failoverDelay | quote }}
+  {{- with .Values.affinity }}
+  affinity:
+  {{- include "cloudnative.affinity" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.resources }}
+  resources:
+  {{- include "cloudnative.resources" . | nindent 4 }}
+  {{- end }}
+  primaryUpdateStrategy: {{ .Values.primaryUpdateStrategy | quote }}
+  primaryUpdateMethod: {{ .Values.primaryUpdateMethod | quote }}
+  {{- with .Values.managed.roles }}
+  managed:
+  {{- include "cloudnative.managed" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.bootstrap }}
+  bootstrap:
+  {{- if .initdb -}}
+    {{- include "cloudnative.boostrap.initdb" . | nindent 4 }}
+    {{- else if .recovery }}
+    {{- include "cloudnative.bootstrap.recovery" . | nindent 4 }}
+    {{- else if .pg_basebackup }}
+    {{- include "cloudnative.boostrap.pg_basebackup" . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- with .Values.postgresql }}
+  postgresql:
+  {{- include "cloudnative.postgresql_conf" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.tablespaces }}
+  tablespaces:
+  {{- include "cloudnative.tablespaces" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.plugins }}
+  plugins:
+  {{- include "cloudnative.plugins" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.projectedVolumeTemplate }}
+  projectedVolumeTemplate:
+  {{- include "cloudnative.projected_volume_template" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.ephemeralVolumesSizeLimit }}
+  ephemeralVolumesSizeLimit:
+  {{- include "cloudnative.ephemeral_volume_size_limit" . | nindent 4}}
+  {{- end }}
+  {{- with .Values.ephemeralVolumeSource }}
+  ephemeralVolumeSource:
+  {{- include "cloudnative.ephemeral_volume_source" . | nindent 4 }}
+  {{- end }}
+  enablePDB: {{ .Values.enablePDB }}
+  {{- with .Values.nodeMaintenanceWindow }}
+  nodeMaintenanceWindow:
+    inProgress: {{ .inProgress }}
+    reusePVC: {{ .reusePVC }}
+  {{- end }}
+  {{- include "cloudnative.env" . | nindent 2 -}}
+  monitoring:
+  {{- include "cloudnative.monitoring.custom_queries_configmap" . | nindent 4 -}}
+  logLevel: {{ .Values.logLevel | quote }}
+---

@@ -1,0 +1,47 @@
+{{- if .Values.databases }}
+{{- range .Values.databases }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ .metadata.name }}
+spec:
+  name: {{ .spec.name }}
+  owner: {{ .spec.owner }}
+  cluster:
+    name: {{ .spec.cluster.name }}
+
+  {{- with .spec.extensions }}
+  extensions:
+    {{- range . }}
+    - name: {{ .name }}
+      {{- with .ensure }}
+      ensure: {{ . }}
+      {{- end }}
+      {{- with .version }}
+      version: {{ . }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .spec.ensure }}
+  ensure: {{ .spec.ensure }}
+  {{- end }}
+
+  {{- if .spec.databaseReclaimPolicy }}
+  databaseReclaimPolicy: {{ .spec.databaseReclaimPolicy }}
+  {{- end }}
+
+  {{- with .spec.schemas }}
+  schemas:
+    {{- range . }}
+    - name: {{ .name }}
+      owner: {{ .owner }}
+      {{- if .ensure }}
+      ensure: {{ .ensure }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+
+{{- end }}
+{{- end }}

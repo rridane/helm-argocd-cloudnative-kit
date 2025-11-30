@@ -1,0 +1,37 @@
+{{- if .Values.poolers }}
+{{- range .Values.poolers }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: {{ .name }}
+spec:
+  cluster:
+    name: {{ .cluster }}
+  instances: {{ .instances | default 2 }}
+  type: {{ .type | default "rw" }}
+
+  {{- with .pgbouncer }}
+  pgbouncer:
+    poolMode: {{ .poolMode | default "session" }}
+    {{- with .parameters }}
+    parameters:
+      {{- range $k, $v := . }}
+      {{ $k }}: {{ $v | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+
+  {{- with .serviceTemplate }}
+  serviceTemplate:
+    metadata:
+      {{- with .metadata.labels }}
+      labels:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- toYaml .spec | nindent 8 }}
+  {{- end }}
+
+{{- end }}
+{{- end }}

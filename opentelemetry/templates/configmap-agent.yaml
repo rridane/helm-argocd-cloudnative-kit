@@ -1,6 +1,6 @@
 {{- /*
-  Génère le ConfigMap COLLECTOR avec filtrage des receivers/processors/exporters/connectors
-  selon les pipelines déclarés.
+  Génère le ConfigMap AGENT avec filtrage automatique des fragments
+  en fonction de agentPipelinesFile.
 */ -}}
 
 {{- $conf := dict
@@ -17,7 +17,7 @@
   "connectors" .Values.connectorsDir
 -}}
 
-  # Fusion des fragments YAML
+  # Fusion initiale des fragments
 {{- range $kind, $path := $dirs }}
   {{- $files := $.Files.Glob (printf "%s/*.y*ml" $path) }}
   {{- range $filePath, $fileContent := $files }}
@@ -28,14 +28,13 @@
   {{- end }}
 {{- end }}
 
-  # Chargement du fichier pipelines
-{{- $pipelines := fromYaml (.Files.Get .Values.pipelinesFile) }}
+  # Pipelines AGENT
+{{- $pipelines := fromYaml (.Files.Get .Values.agentPipelinesFile) }}
 
-  # Extraire les receivers/processors/exporters/connectors réellement utilisés
+  # Extraction des éléments réellement utilisés
 {{- $usedReceivers := list }}
 {{- $usedProcessors := list }}
 {{- $usedExporters := list }}
-{{- $usedConnectors := list }}
 
 {{- range $pName, $pConf := $pipelines.pipelines }}
   {{- range $r := $pConf.receivers }}
@@ -49,38 +48,38 @@
   {{- end }}
 {{- end }}
 
-  # Filtrer les blocs réellement nécessaires
+  # Filtrage des fragments
 {{- $filteredReceivers := dict }}
-{{- range $name, $confItem := (get $conf "receivers") }}
+{{- range $name, $item := (get $conf "receivers") }}
   {{- if mustHas $name $usedReceivers }}
-    {{- $_ := set $filteredReceivers $name $confItem }}
+    {{- $_ := set $filteredReceivers $name $item }}
   {{- end }}
 {{- end }}
 
 {{- $filteredProcessors := dict }}
-{{- range $name, $confItem := (get $conf "processors") }}
+{{- range $name, $item := (get $conf "processors") }}
   {{- if mustHas $name $usedProcessors }}
-    {{- $_ := set $filteredProcessors $name $confItem }}
+    {{- $_ := set $filteredProcessors $name $item }}
   {{- end }}
 {{- end }}
 
 {{- $filteredExporters := dict }}
-{{- range $name, $confItem := (get $conf "exporters") }}
+{{- range $name, $item := (get $conf "exporters") }}
   {{- if mustHas $name $usedExporters }}
-    {{- $_ := set $filteredExporters $name $confItem }}
+    {{- $_ := set $filteredExporters $name $item }}
   {{- end }}
 {{- end }}
 
-  # connectors sont utilisés comme receivers/exporters
+  # Connectors utilisés uniquement s'ils apparaissent en receiver ou exporter
 {{- $filteredConnectors := dict }}
-{{- range $name, $confItem := (get $conf "connectors") }}
+{{- range $name, $item := (get $conf "connectors") }}
   {{- if or (mustHas $name $usedReceivers) (mustHas $name $usedExporters) }}
-    {{- $_ := set $filteredConnectors $name $confItem }}
+    {{- $_ := set $filteredConnectors $name $item }}
   {{- end }}
 {{- end }}
 
-  # Construction finale
-{{- $collectorConfig := dict
+  # Construction finale du fichier agent
+{{- $agentConfig := dict
   "receivers"  $filteredReceivers
   "processors" $filteredProcessors
   "exporters"  $filteredExporters
@@ -92,8 +91,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: otel-configmap
+  name: otel-agent-configmap
   namespace: {{ .Values.namespace }}
 data:
   config.yaml: |
-{{ toYaml $collectorConfig | indent 4 }}
+{{ toYaml $agentConfig | indent 4 }}

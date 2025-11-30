@@ -1,24 +1,29 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: {{ .Values.name }}
+  name: {{ .Values.name }}-agent
   namespace: {{ .Values.namespace }}
   labels:
     {{- toYaml .Values.labels | nindent 4 }}
+    component: otel-agent
 spec:
-  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      {{- toYaml .Values.labels | nindent 6 }}
+      app: opentelemetry
+      component: otel-agent
   template:
     metadata:
       labels:
-        {{- toYaml .Values.labels | nindent 8 }}
+        app: opentelemetry
+        component: otel-agent
     spec:
       serviceAccountName: {{ .Values.serviceAccountName }}
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 30
       containers:
-        - name: otel-collector
+        - name: otel-agent
           image: {{ .Values.image }}
           env:
             - name: KUBE_NODE_NAME
@@ -37,17 +42,35 @@ spec:
               mountPath: /etc/otelcol-contrib/config.yaml
               subPath: config.yaml
               readOnly: true
-            - name: varlog
+
+            # Logs containers sur le node
+            - name: varlogpods
               mountPath: /var/log/pods
               readOnly: true
-          ports:
-            - containerPort: 4317
-            - containerPort: 4318
-            - containerPort: 8000
+
+            # Journald du node
+            - name: varlogjournal
+              mountPath: /var/log/journal
+              readOnly: true
+
+            # kubelet SSL
+            - name: kubelet-pki
+              mountPath: /etc/kubernetes/pki
+              readOnly: true
+
       volumes:
         - name: data
           configMap:
-            name: otel-configmap
-        - name: varlog
+            name: otel-agent-configmap
+
+        - name: varlogpods
           hostPath:
             path: /var/log/pods/
+
+        - name: varlogjournal
+          hostPath:
+            path: /var/log/journal/
+
+        - name: kubelet-pki
+          hostPath:
+            path: /etc/kubernetes/pki/

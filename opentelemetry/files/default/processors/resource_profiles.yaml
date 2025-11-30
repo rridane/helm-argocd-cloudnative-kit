@@ -1,0 +1,8 @@
+resource/profiles:
+  attributes:
+    - action: upsert
+      from_attribute: k8s.namespace.name
+      key: service.namespace
+    - action: upsert
+      from_attribute: k8s.container.name
+      key: k8s.container.name

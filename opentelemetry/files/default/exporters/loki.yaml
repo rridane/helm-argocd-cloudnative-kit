@@ -1,5 +1,5 @@
 otlphttp/loki:
-  endpoint: http://loki.loki.svc:3100/otlp/v1/logs
+  logs_endpoint: http://loki-gateway.loki.svc/otlp/v1/logs
   compression: gzip
   retry_on_failure:
     enabled: true

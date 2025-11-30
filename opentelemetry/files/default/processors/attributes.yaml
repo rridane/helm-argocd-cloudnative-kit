@@ -5,4 +5,4 @@ attributes:
       from_attribute: trace_id
     - action: insert
       key: loki.attribute.labels
-      value: trace_id
+      value: trace_id,service_name

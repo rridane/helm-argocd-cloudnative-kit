@@ -1,4 +1,15 @@
 prometheusremotewrite:
-  endpoint: http://prometheus-grafana-kube-pr-prometheus.monitoring.svc:9090/api/v1/write
-  target_info:
+  endpoint: http://mimir-gateway.mimir.svc/api/v1/push
+  headers:
+    X-Scope-OrgID: "admin"
+  compression: snappy
+  timeout: 30s
+  retry_on_failure:
     enabled: true
+    initial_interval: 5s
+    max_interval: 30s
+    max_elapsed_time: 300s
+  remote_write_queue:
+    enabled: true
+    num_consumers: 8
+    queue_size: 20000

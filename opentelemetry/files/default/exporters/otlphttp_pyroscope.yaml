@@ -1,0 +1,4 @@
+otlphttp/pyroscope:
+  endpoint: http://pyroscope.pyroscope.svc:4040
+  tls:
+    insecure: true

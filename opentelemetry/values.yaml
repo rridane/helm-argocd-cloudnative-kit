@@ -3,10 +3,11 @@ name: invoiced
 
 replicas: 3
 serviceAccountName: otelcontribcol
-image: otel/opentelemetry-collector-contrib:0.138.0
+image: otel/opentelemetry-collector-contrib:0.140.1
 featureGates:
   - "--feature-gates=filelog.allowHeaderMetadataParsing"
-
+  - "--feature-gates=service.profilesSupport"
+  - "--feature-gates=transform.flatten.logs"
 resources:
   limits:
     cpu: 200m
@@ -25,3 +26,4 @@ processorsDir: "files/default/processors"
 exportersDir: "files/default/exporters"
 connectorsDir: "files/default/connectors"
 pipelinesFile: "files/default/pipelines.yaml"
+agentPipelinesFile: "files/default/agent-pipelines.yaml"

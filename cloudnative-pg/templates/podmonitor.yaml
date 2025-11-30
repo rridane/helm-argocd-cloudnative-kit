@@ -1,0 +1,27 @@
+{{- if .Values.monitors }}
+{{- range .Values.monitors }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ .name }}
+spec:
+  selector:
+    matchLabels:
+      {{- range $k, $v := .selector }}
+      {{ $k }}: {{ $v }}
+      {{- end }}
+  podMetricsEndpoints:
+    - port: {{ .port | default "metrics" }}
+      scheme: {{ .scheme | default "http" }}
+      {{- if .tlsConfig -}}
+      tlsConfig:
+        ca:
+          secret:
+            name: {{ .tlsConfig.ca.secret.name }}
+            key: {{ .tlsConfig.ca.secret.key }}
+        serverName: {{ .tlsConfig.serverName }}
+      {{- end }}
+
+{{- end }}
+{{- end }}

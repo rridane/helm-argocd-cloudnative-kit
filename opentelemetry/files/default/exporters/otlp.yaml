@@ -1,0 +1,4 @@
+otlp:
+  endpoint: "invoiced-collector.observability.svc:4317"
+  tls:
+    insecure: true

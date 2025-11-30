@@ -1,0 +1,141 @@
+---
+clusterName: "multi_instance_medium"
+labels:
+  app: cloudnative-pg
+instances: 3
+imageCatalogRef:
+  apiGroup: postgresql.cnpg.io
+  kind: ClusterImageCatalog
+  name: my-pg-catalog
+  major: 18
+storage: 20Gi
+storageClass: dynamic-platform-persistent
+walStorage:
+  size: 10Gi
+  storageClass: dynamic-platform-persistent
+resources:
+  requests:
+    memory: "2048Mi"
+    cpu: "1000m"
+  limits:
+    memory: "2048Mi"
+    cpu: "1000m"
+postgresql:
+  parameters:
+    shared_buffers: "512MB"
+    work_mem: "16MB"
+    maintenance_work_mem: "128MB"
+    auto_explain.log_min_duration: "10s"
+    pg_stat_statements.max: "10000"
+    pg_stat_statements.track: "all"
+    pgaudit.log: "all, -misc"
+    pgaudit.log_catalog: "off"
+    pgaudit.log_parameter: "on"
+    pgaudit.log_relation: "on"
+  synchronous:
+    method: "any"
+    number: 1
+    dataDurability: "preferred"
+
+  pg_hba:
+    - host all all 127.0.0.1/32 trust
+    - host all all ::1/128 trust
+    - hostssl all all all md5
+  pg_ident: []
+  shared_preload_libraries:
+    - "pg_stat_statements"
+    - "auto_explain"
+    - "pgaudit"
+managed:
+  roles:
+    []
+    # Exemple détaillé :
+    # - name: readonly
+    #   ensure: present
+    #
+    # - name: readwrite
+    #   ensure: present
+    #   inRoles:
+    #     - readonly
+    #
+    # - name: dante
+    #   ensure: present
+    #   login: true
+    #   comment: "Dante Alighieri"
+    #   superuser: false
+    #   passwordSecret:
+    #     name: dante-password
+    #   inRoles:
+  #     - readwrite
+  #     - pg_monitor
+  #     - pg_signal_backend
+enablePDB: true
+nodeMaintenanceWindow:
+  reusePVC: true
+env: []
+envFrom: []
+logLevel: "info"
+
+bootstrap:
+  initdb:
+    database: "app"   # nom de la base principale
+    owner: "app"      # propriétaire
+    secret:
+      name: "app-secret" # secret contenant username/password
+    postInitSQL: []
+
+################################################################################
+# WAL ARCHIVING - Barman Cloud
+#
+# ⚠️  PRÉREQUIS : Créer l'ObjectStore avant de déployer ce cluster
+#
+# apiVersion: barmancloud.cnpg.io/v1
+# kind: ObjectStore
+# metadata:
+#   name: backup-pg-object-store
+# spec:
+#   configuration:
+#     destinationPath: "s3://my-bucket/backups/multi-instance-medium"
+#     wal:
+#       maxParallel: 8
+#   credentials:
+#     accessKeyId:
+#       name: s3-creds
+#       key: ACCESS_KEY_ID
+#     secretAccessKey:
+#       name: s3-creds
+#       key: ACCESS_SECRET_KEY
+################################################################################
+plugins:
+  - name: "barman-cloud.cloudnative-pg.io"
+    isWALArchiver: true
+    parameters:
+      barmanObjectName: "backup-pg-object-store"
+
+#databases:
+#  - metadata:
+#      name: cluster-example-one
+#    spec:
+#      name: "one"
+#      owner: "app"
+#      cluster:
+#        name: "cluster-example"
+
+monitors:
+  - name: multi-instance-monitor
+    selector:
+      cnpg.io/cluster: multi_instance_medium
+    port: metrics
+    scheme: https
+
+poolers:
+  - name: pooler-example-rw
+    cluster: "multi_instance_medium"
+    instances: 2
+    type: rw
+    pgbouncer:
+      poolMode: session
+      parameters:
+        max_client_conn: "1000"
+        default_pool_size: "10"
+        query_timeout: "300"

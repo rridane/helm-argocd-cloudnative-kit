@@ -1,0 +1,12 @@
+{{- if .Values.customQueriesConfigMap }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.customQueriesConfigMap.name }}
+  labels:
+    cnpg.io/reload: ""
+data:
+  {{ .Values.customQueriesConfigMap.key }}: |
+{{ .Values.customQueriesConfigMap.content | indent 4 }}
+{{- end }}

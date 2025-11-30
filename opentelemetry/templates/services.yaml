@@ -7,11 +7,14 @@ metadata:
     {{- toYaml .Values.labels | nindent 4 }}
 spec:
   selector:
-    component: otel-collector
+    {{- toYaml .Values.labels | nindent 4 }}
   ports:
     - name: otlp
       port: 4317
+      targetPort: 4317  # ← Ajoutez targetPort
     - name: http
       port: 4318
+      targetPort: 4318
     - name: metrics
       port: 8000
+      targetPort: 8000

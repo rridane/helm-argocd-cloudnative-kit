@@ -1,0 +1,1111 @@
+---
+#############################
+###  METADATA  ####
+#############################
+
+## clusterName
+clusterName: "my-awesome-cluster"
+# custom labels
+labels:
+  app: cloudnative-pg
+# custom annotations
+annotations: null
+# isolate ane or more instances with fence: [*] far all, needs an array
+fenceInstances: []
+
+#############################
+### GENERAL CONFIGURATION ###
+#############################
+
+instances: 3
+# Configuration pour imageCatalogRef ou ClusterImageCatalogRef
+# Exemple:
+#  apiGroup: postgresql.cnpg.io
+#  kind: ClusterImageCatalog | ImageCatalog
+#  name: postgresql
+#  major: 16
+#  namespace: my-namespace
+imageCatalogRef: null
+
+#############################
+##### STORAGE #####
+#############################
+
+storage: 1Gi
+storageClass: my-storage-class
+walStorage:
+  size: 10Gi
+  storageClass: my-storage-class
+# Configuration for manually managing pvcTemplate
+# Exemple:
+#   pvcTemplate:
+#     accessModes:
+#       - ReadWriteOnce
+#     resources:
+#       requests:
+#         storage: 1Gi
+#     storageClassName: standard
+#     volumeMode: Filesystem
+pvcTemplate: null
+
+#############################
+##### SUPERUSER #####
+#############################
+
+# optional secret management flags
+enableSuperuserAccess: false # false by default
+enableSuperuserSecret: null # null by default
+
+#############################
+##### EXTERNAL CLUSTER #####
+#############################
+
+# Liste des clusters externes à déclarer
+# Exemple :
+# externalClusters:
+#   - name: source-prod
+#     plugin:
+#       name: barman-cloud.cloudnative-pg.io
+#       parameters:
+#         barmanObjectName: backup-pg-object-store
+#         serverName: cluster-example
+#   - name: source-db
+#     connectionParameters:
+#       host: source-db.foo.com
+#       user: streaming_replica
+#     password:
+#       name: source-db-replica-user
+#       key: password
+externalClusters: []
+
+###########################################################################
+# PROBES CONFIGURATION
+#
+# Configuration des probes CNPG (startup, liveness, readiness).
+# Docs officielles :
+# https://cloudnative-pg.io/documentation/current/probes/
+#
+# Chaque probe peut être :
+#   - streaming     : succès quand le réplica commence à streamer et respecte maximumLag
+#   - query         : succès si une requête simple sur PostgreSQL s'exécute
+#   - pg_isready    : succès quand pg_isready=0
+#
+# Notes importantes :
+#   - Une probe ne peut avoir QU’UN SEUL type.
+#   - maximumLag ne s’applique que pour type=streaming.
+#   - isolationCheck n’est applicable que dans la livenessProbe.
+#   - enabled permet d'activer/désactiver complètement la probe.
+###########################################################################
+
+probes:
+  #########################################################################
+  # STARTUP PROBE
+  #
+  # Utilisée par CNPG pour déterminer quand une instance PostgreSQL peut
+  # commencer à accepter ses opérations internes.
+  #
+  # Types possibles :
+  #   - streaming (demande maximumLag)
+  #   - query
+  #   - pg_isready
+  #########################################################################
+  startup:
+    enabled: true
+
+    # Périodicité du test
+    periodSeconds: 3
+
+    # Timeout du test
+    timeoutSeconds: 3
+
+    # Nombre d'échecs avant que Kubernetes marque l'instance comme KO
+    failureThreshold: 10
+
+    # Type de probe (streaming | query | pg_isready)
+    type: streaming
+
+    # Applicable uniquement si type=streaming
+    maximumLag: 16Mi
+
+  #########################################################################
+  # LIVENESS PROBE
+  #
+  # Si cette probe échoue, Kubernetes redémarre le pod.
+  #
+  # Particularité : isolationCheck, spécifique à CNPG.
+  # isolationCheck arrête un primaire si :
+  #   1. il ne peut plus joindre l’API Server Kubernetes
+  #   2. ET aucune autre instance via l’API REST interne CNPG
+  #########################################################################
+  liveness:
+    enabled: true
+
+    periodSeconds: 3
+    timeoutSeconds: 3
+    failureThreshold: 10
+
+    # Contrôle avancé de CNPG pour détecter un nœud isolé
+    isolationCheck:
+      enabled: true
+
+      # Délai max pour tenter de joindre l'API
+      requestTimeout: "2000"
+
+      # Délai max pour tenter de joindre une autre instance CNPG
+      connectionTimeout: "2000"
+
+
+  #########################################################################
+  # READINESS PROBE
+  #
+  # Détermine si l’instance est prête à répondre aux requêtes du service.
+  #
+  # Types possibles :
+  #   - streaming (demande maximumLag)
+  #   - query
+  #   - pg_isready
+  #########################################################################
+  readiness:
+    enabled: true
+
+    periodSeconds: 3
+    timeoutSeconds: 3
+    failureThreshold: 10
+
+    # Type de probe (streaming | query | pg_isready)
+    type: streaming
+
+    # Applicable uniquement si type=streaming
+    maximumLag: 16Mi
+
+###############################################################################
+# SHUTDOWN SETTINGS & FAILOVER CONTROLS
+#
+# Paramètres avancés de gestion de l'arrêt, du failover et du switchover.
+# Très importants pour maîtriser le RTO/RPO et la disponibilité du cluster.
+#
+# smartShutDownTimeout :
+#   - Quand le Pod reçoit un signal (drain, suppression, etc.), CNPG effectue
+#     un "smart shutdown" : il refuse les nouvelles connexions.
+#   - Si l'instance n'est pas arrêtée avant ce délai → passage en fast shutdown.
+#
+# stopDelay :
+#   - Utilisé pendant le fast shutdown.
+#   - Si des WAL sont en train d’être écrits, CNPG attend jusqu’à stopDelay.
+#
+# switchoverDelay :
+#   - Pendant un switchover, l'ancien primaire DOIT effectuer un fast shutdown
+#     avant que le nouveau primaire soit promu.
+#   - Valeur basse ⇒ RTO rapide mais risque de perte (RPO).
+#   - Valeur haute ⇒ protection maximale mais cluster primaire indisponible plus longtemps.
+#
+# failoverDelay :
+#   - Délai d’attente avant de déclencher le failover quand un primaire semble défaillant.
+#   - Peut éviter un failover si le nœud revient vite.
+###############################################################################
+
+smartShutDownTimeout: 180
+stopDelay: 1800
+switchoverDelay: 3600
+failoverDelay: 30
+
+
+###############################################################################
+# AFFINITY SETTINGS
+#
+# Permet de contrôler sur quels nœuds les instances Postgres doivent se placer.
+# Très utile pour :
+#   - isoler les workloads database
+#   - garantir l'utilisation de nœuds optimisés I/O
+###############################################################################
+
+affinity:
+  nodeSelector:
+    node-role.kubernetes.io/postgres: ""
+
+
+###############################################################################
+# POD RESOURCES
+#
+# Définition fine des ressources par instance du cluster PostgreSQL.
+# À adapter selon votre workload (transactions, analytics, multitenant, etc).
+###############################################################################
+
+resources:
+  requests:
+    memory: "32Mi"
+    cpu: "50m"
+  limits:
+    memory: "128Mi"
+    cpu: "100m"
+
+###############################################################################
+# PRIMARY UPDATE STRATEGY
+#
+# Stratégie appliquée par l’opérateur lors des mises à jour mineures Postgres.
+#
+# Deux stratégies possibles :
+#
+#   unsupervised (défaut)
+#     - L’opérateur met à jour les réplicas.
+#     - Puis met automatiquement à jour le primaire selon primaryUpdateMethod :
+#         - restart     : redémarrage du primaire (défaut)
+#         - switchover : promotion du standby le plus avancé, puis arrêt de l'ancien primaire
+#
+#   supervised
+#     - L’opérateur met à jour les réplicas PUIS STOPPE le processus.
+#     - L’administrateur doit alors :
+#         kubectl cnpg promote <cluster> <new_primary>
+#         kubectl cnpg restart <cluster> <current_primary>
+#
+###############################################################################
+primaryUpdateStrategy: "unsupervised"
+# primaryUpdateMethod:
+#   restart (défaut)
+#   switchover
+
+
+###############################################################################
+# MANAGED ROLES (RBAC PostgreSQL interne)
+#
+# L’opérateur peut gérer automatiquement la création/présence/suppression de
+# rôles PostgreSQL et leurs héritages.
+#
+# Exemple :
+# - readonly
+# - readwrite (hérite de readonly)
+# - dante (rôle utilisateur avec secret de mot de passe)
+#
+# IMPORTANT :
+# - ensure: present / absent
+# - login: true permet à ce rôle de se connecter
+# - passwordSecret doit contenir un secret Kubernetes avec les clés:
+#       username: <role>
+#       password: <password>
+#
+###############################################################################
+managed:
+  roles:
+    []
+    # Exemple détaillé :
+    # - name: readonly
+    #   ensure: present
+    #
+    # - name: readwrite
+    #   ensure: present
+    #   inRoles:
+    #     - readonly
+    #
+    # - name: dante
+    #   ensure: present
+    #   login: true
+    #   comment: "Dante Alighieri"
+    #   superuser: false
+    #   passwordSecret:
+    #     name: dante-password
+    #   inRoles:
+    #     - readwrite
+    #     - pg_monitor
+  #     - pg_signal_backend
+
+###############################################################################
+# POSTGRESQL MAIN CONFIGURATION
+#
+# Configuration de PostgreSQL au niveau des 3 fichiers principaux :
+#   - postgresql.conf → via parameters:
+#   - pg_hba.conf     → via pg_hba:
+#   - pg_ident.conf   → via pg_ident:
+#
+# CloudNativePG gère exclusivement cette section pour la configuration Postgres.
+# Il n’est PAS possible de monter ces fichiers autrement.
+###############################################################################
+
+postgresql:
+
+  #############################################################################
+  # postgresql.conf — paramètres principaux
+  #
+  # Tous les paramètres Postgres sont définis dans "parameters".
+  # CNPG supporte également des sous-sections spécialisées pour extensions :
+  #   - auto_explain
+  #   - pg_stat_statements
+  #   - pgaudit
+  #   - pg_failover_slots
+  #############################################################################
+  parameters:
+
+    # Taille des buffers partagés (lié à la RAM du pod)
+    shared_buffers: "1GB"
+
+    # SECTION auto_explain
+    auto_explain.log_min_duration: "10s"  # log les plans > 10s
+
+    # SECTION pg_stat_statements
+    pg_stat_statements.max: "10000"
+    pg_stat_statements.track: "all"  # all | top | none
+
+    # SECTION pgaudit (audit PostgreSQL avancé)
+    pgaudit.log: "all, -misc"
+    pgaudit.log_catalog: "off"
+    pgaudit.log_parameter: "on"
+    pgaudit.log_relation: "on"
+
+    # SECTION pg_failover_slots (EDB)
+    # Assure que les slots logiques survivent aux failovers.
+    # Exemple :
+    # pg_failover_slots:
+    #   primary_slot_name: "my_slot"
+    #   standby_slot_name: "my_slot_replica"
+
+  #############################################################################
+  # pg_hba.conf — Host Based Authentication rules
+  #
+  # Chaque entrée est une ligne pg_hba.conf brute.
+  # Exemple :
+  #   - hostssl app app 10.244.0.0/16 md5
+  #
+  # ⚠ Ces lignes doivent être valides — CNPG ne les modifie pas.
+  #############################################################################
+  pg_hba:
+    # Exemple par défaut :
+    - host all all all trust
+
+    # Activation du streaming réplica (TLS)
+    - hostssl app streaming_replica all cert
+
+    # Accès de l’utilisateur app depuis le réseau interne
+    - hostssl app app 10.244.0.0/16 md5
+
+  #############################################################################
+  # pg_ident.conf — mapping d’identités externes → utilisateurs PostgreSQL
+  #
+  # Format des lignes :
+  #   mapname  system_username  pg_username
+  #
+  # Exemple :
+  #   - "ldap_map ldapuser pguser"
+  #############################################################################
+  pg_ident: []
+
+
+  #############################################################################
+  # shared_preload_libraries
+  #
+  # Extensions qui doivent être chargées AU DÉMARRAGE de PostgreSQL.
+  # CNPG gère automatiquement :
+  #   - auto_explain
+  #   - pg_stat_statements
+  #   - pgaudit
+  #   - pg_failover_slots
+  #
+  # Default :
+  #############################################################################
+  shared_preload_libraries:
+    - "pg_stat_statements"
+    - "auto_explain"
+
+
+  #############################################################################
+  # SYNCHRONOUS REPLICATION SETTINGS
+  #
+  # Contrôle du mode de réplication : synchone / asynchrone
+  #
+  # method:
+  #   - first   → attend les N premiers standbys de la liste
+  #   - any     → attend n’importe lesquels des N standbys
+  #
+  # number:
+  #   - nombre requis de standbys synchrones
+  #
+  # standbyNamesPre  / standbyNamesPost :
+  #   - ajout de standbys externes priorisés (Pre → avant les pods CNPG)
+  #
+  # dataDurability:
+  #   - required  (RPO=0, écritures bloquées si aucun standby dispo)
+  #   - preferred (auto-healing, risque minimal de perte)
+  #############################################################################
+  synchronous:
+    method: "first"     # "first" | "any"
+    number: 2
+
+    maxStandbyNamesFromCluster: 1
+
+    # Standbys externes prioritaires
+    standbyNamesPre:
+      - "angus"
+
+    # Standbys secondaires externes
+    standbyNamesPost:
+      - "malcolm"
+
+    dataDurability: "required"   # required | preferred
+
+
+  #############################################################################
+  # EXTENSIONS FROM OCI IMAGES
+  #
+  # Charge dynamiquement des extensions PostgreSQL via une image OCI montée
+  # dans le pod CNPG (volume immutable).
+  #
+  # Exemple typique :
+  #   - PostGIS
+  #
+  # Chaque extension doit définir :
+  #   - name:
+  #   - image.reference: <OCI ref>
+  #
+  # Optionnel :
+  #   - ld_library_path: ajout de bibliothèques système
+  #############################################################################
+  extensions:
+    []
+    # Exemple détaillé :
+    # - name: "foo"
+    #   ld_library_path:
+    #     - "syslib"
+    #   image:
+  #     reference: "registry.domain.com/postgres-extensions/foo:1.0.0"
+
+################################################################################
+# TABLESPACES (PostgreSQL)
+#
+# CloudNativePG crée un PVC pour chaque tablespace sur CHAQUE instance du cluster.
+# Puis il crée les TABLESPACES dans PostgreSQL avec CREATE TABLESPACE.
+#
+# IMPORTANT :
+# - Les noms doivent être IDENTIQUES sur tous les replicas.
+# - Seuls size et storageClass peuvent varier.
+# - Limitation CNPG : impossible de supprimer un tablespace existant d’un cluster.
+#
+# Exemple d’utilisation :
+#   app=# CREATE TABLE fibonacci(num INTEGER) TABLESPACE tbs1;
+################################################################################
+tablespaces:
+  - name: "tbs1"
+    # Par défaut, le owner est l’utilisateur applicatif "app"
+    owner:
+      name: "postgres"
+    storage:
+      size: "1Gi"
+      storageClass: "fastest"
+
+  - name: "tbs2"
+    storage:
+      size: "2Gi"
+      storageClass: "balanced"
+
+  - name: "tbs3"
+    temporary: true   # sera ajouté à temp_tablespaces
+    storage:
+      size: "2Gi"
+
+
+################################################################################
+# PLUGINS (ex: Barman Cloud WAL Archiving)
+#
+# Actuellement seul barman-cloud.cloudnative-pg.io est supporté.
+# Utilisé pour l’archivage des WAL dans un ObjectStore.
+################################################################################
+plugins:
+  - name: "barman-cloud.cloudnative-pg.io"
+    isWALArchiver: true
+    parameters:
+      barmanObjectName: "postgresql-object-store"
+
+
+################################################################################
+# PROJECTED VOLUME TEMPLATE
+#
+# Permet de monter des fichiers personnalisés dans les pods PostgreSQL :
+#   - certificats
+#   - configs d’extensions
+#   - fichiers supplémentaires
+################################################################################
+projectedVolumeTemplate:
+  sources:
+    - secret:
+        name: "sample-secret"
+        items:
+          - key: "tls.crt"
+            path: "certificate/tls.crt"
+          - key: "tls.key"
+            path: "certificate/tls.key"
+
+
+################################################################################
+# EPHEMERAL INTERNAL VOLUMES
+#
+# Volumes éphémères utilisés par CNPG :
+#   - shared memory (shm)
+#   - temporary data
+#
+# Valeurs supportées : Quantités Kubernetes (ex: 1Gi, 500Mi)
+################################################################################
+ephemeralVolumesSizeLimit:
+  shm: "1Gi"
+  temporaryData: "2Gi"
+
+
+################################################################################
+# EPHEMERAL VOLUME SOURCE (StorageClass dédiée)
+#
+# Permet d’utiliser un VolumeClaimTemplate à la place d’emptyDir.
+################################################################################
+ephemeralVolumeSource:
+  volumeClaimTemplate:
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "ephemeral-storage-class"
+      resources:
+        requests:
+          storage: "1Gi"
+
+################################################################################
+# POD DISRUPTION BUDGET (PDB)
+#
+# Lorsqu’un nœud contenant le primaire est drainé :
+#   → CNPG exécute automatiquement un switchover AVANT le drain (si >1 instance).
+#
+# Comportement PDB :
+# - Clusters HA (>= 2 instances) :
+#     → switchover automatique avant drain
+#
+# - Clusters à une seule instance :
+#     → switchover impossible
+#     → CNPG BLOQUE le drain
+#
+# → Pour les environnements de DEV à une seule instance,
+#   vous devez désactiver le PDB pour permettre le drain du nœud.
+################################################################################
+enablePDB: true   # false uniquement pour les clusters de dev à instance unique
+
+
+################################################################################
+# NODE MAINTENANCE WINDOW
+#
+# Lorsque reusePVC = false :
+#   → supprimer l’unique instance = suppression du PVC = perte de données totale
+#   → CNPG empêche donc le drain même en maintenance
+#
+# Deux alternatives :
+#   - reusePVC: true  → accepte le downtime, permet le drain
+#   - ajouter une nouvelle instance → switchover → drain ok
+################################################################################
+nodeMaintenanceWindow:
+  inProgress: false
+  reusePVC: false
+
+
+################################################################################
+# ENVIRONMENT VARIABLES
+#
+# Ces variables sont ajoutées aux pods PostgreSQL :
+#   env:     liste explicite de variables
+#   envFrom: ConfigMap/Secret complet
+################################################################################
+env: []
+# Exemple :
+# env:
+#   - name: TZ
+#     value: "Australia/Sydney"
+
+envFrom: []
+# Exemple :
+# envFrom:
+#   - configMapRef:
+#       name: config-map-name
+#   - secretRef:
+#       name: secret-name
+
+
+################################################################################
+# LOG LEVEL
+#
+# Niveau de log des pods CloudNativePG :
+#   error | warning | info (default) | debug | trace
+################################################################################
+logLevel: "info"
+
+################################################################################
+# BOOTSTRAP CONFIGURATION
+#
+# Trois modes principaux :
+#
+# 1. initdb          — Création d’un cluster neuf
+# 2. recovery        — Restauration depuis un backup Barman/WAL
+# 3. pg_basebackup   — Copie physique complète depuis un autre cluster CNPG
+#
+# Un SEUL mode doit être actif (initdb OU recovery OU pg_basebackup).
+################################################################################
+
+bootstrap:
+
+  ##############################################################################
+  # MODE 1 : INITDB
+  #
+  # Initialisation d’un cluster vide avec :
+  #   - une database applicative (database)
+  #   - un owner (owner)
+  #   - un secret username/password (secret)
+  #
+  # Possibilités supplémentaires :
+  #   - import logique (pg_dump / pg_restore)
+  #   - paramètres de locale/ICU/WAL
+  #   - postInit SQL appliqués après création
+  ##############################################################################
+  initdb:
+
+    database: "app"   # nom de la base principale
+    owner: "app"      # propriétaire
+    secret:
+      name: "app-secret" # secret contenant username/password
+
+    # Import logique via pg_dump / pg_restore
+    # Deux modes :
+    #   microservice  → spécifique, roles non importés
+    #   monolith      → import complet, roles possibles
+    import:
+      # Type d’import : microservice OU monolith
+      type: "microservice"
+      databases:
+        - "angus"
+
+      # Exemple monolithique complet
+      # type: "monolith"
+      # databases: ["accounting", "banking", "resort"]
+      # roles: ["accountant", "bank_user"]
+
+      # Options additionnelles pg_dump / pg_restore
+      pgDumpExtraOptions: []
+      pgRestoreExtraOptions: []
+
+      # Source externe définie via externalClusters
+      source:
+        externalCluster: "cluster-pg96"
+
+    # Divers paramètres initdb
+    dataChecksums: true
+    encoding: "LATIN1"
+    locale: "fr_FR.UTF-8"
+    localeCollate: "fr_FR.UTF-8"
+    localeCType: "fr_FR.UTF-8"
+    localeProvider: "icu"
+    icuLocale: "fr-FR"
+    icuRules: "secondary"
+    walSegmentSize: 32
+
+    # Scripts appliqués après initialisation
+    postInitSQL:
+      - "CREATE DATABASE analytics;"
+      - |
+        GRANT CONNECT ON DATABASE appdb TO dante;
+        GRANT USAGE ON SCHEMA public TO readonly;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
+        GRANT INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO readwrite;
+
+    # Références vers secrets/configmaps contenant des SQL supplémentaires
+    postInitApplicationSQLRefs:
+      secretRefs: []
+      configMapRefs: []
+      # Exemple :
+      # secretRefs:
+      #   - name: init-queries-secret
+      #     key: init.sql
+      # configMapRefs:
+      #   - name: init-queries-cm
+      #     key: init.sql
+
+
+  ##############################################################################
+  # MODE 2 : RECOVERY — PITR / restore depuis un backup Barman
+  #
+  # CNPG restaure :
+  #   - les fichiers data directory
+  #   - rejoue les WAL
+  #   - stop au PITR cible si défini
+  ##############################################################################
+  recovery:
+
+    # Nom d’un externalCluster fournissant les infos Barman
+    source: "source-prod"
+
+    # Optionnel : restaurer un backup précis
+    backup:
+      name: "backup-example"
+
+    # Optionnel : PITR — date précise
+    recoveryTarget:
+      targetTime: "2025-09-20 14:30:00+00"
+
+    # Configuration applicative post-recovery
+    database: "app"
+    owner: "app"
+    secret:
+      name: "app-secret"
+
+
+  ##############################################################################
+  # MODE 3 : PG_BASEBACKUP
+  #
+  # Copie physique complète du cluster source (must be same major version).
+  #
+  # Avantages :
+  #   - copie complète fichiers + WAL + tablespaces + extensions
+  #
+  # Inconvénients :
+  #   - même version majeure requise
+  #   - même architecture CPU
+  ##############################################################################
+  pg_basebackup:
+    source: "source-db"
+
+################################################################################
+# DATABASES — Gestion du cycle de vie des bases PostgreSQL
+#
+# CloudNativePG ajoute la CRD "Database", permettant de gérer le cycle de vie
+# d’une base de données via Kubernetes :
+#
+# - création automatique d’une base
+# - gestion des extensions
+# - gestion des schémas
+# - gestion du owner
+# - suppression contrôlée (ensure: absent / databaseReclaimPolicy)
+#
+# IMPORTANT :
+# - CloudNativePG NE GÈRE PAS : tables, données, vues, triggers, etc.
+# - CloudNativePG n’écrase JAMAIS les modifications manuelles internes.
+# - Le renommage d’une base n’est PAS supporté.
+# - Les extensions peuvent être installées au niveau database.
+#
+# Chaque entrée de `.Values.databases` génère une ressource Database.
+################################################################################
+
+databases:
+
+  ##############################################################################
+  # EXEMPLE COMPLET : base "one" appartenant à "app"
+  #
+  # Ce bloc crée un Database CRD nommé cluster-example-one.
+  # Cette base appartient au rôle app et est attachée au cluster PostgreSQL
+  # cluster-example.
+  #
+  # Il inclut :
+  #  - installation d’extensions
+  #  - création de schémas
+  #  - démonstration de ensure: absent (suppression contrôlée)
+  ##############################################################################
+  - metadata:
+      name: cluster-example-one
+
+    spec:
+      # Nom de la base dans PostgreSQL
+      name: "one"
+
+      # Owner PostgreSQL
+      owner: "app"
+
+      # Cluster de rattachement (CloudNativePG)
+      cluster:
+        name: "cluster-example"
+
+      ##########################################################################
+      # EXTENSIONS
+      #
+      # Extensions installées au niveau database :
+      # - bloom : extension standard de Postgres
+      # - foo   : extension custom chargée via les "Image Volume Extensions"
+      ##########################################################################
+      extensions:
+        - name: bloom
+          ensure: present
+        - name: foo      # extension perso ajoutée dans le cluster via OCI image
+          version: 1.0
+
+      ##########################################################################
+      # SUPPRESSION DE LA BASE
+      #
+      # Deux approches :
+      #   ensure: absent              — supprime la base si elle existe
+      #   databaseReclaimPolicy: delete — supprime la base et force la réclamation
+      #
+      # Ce chart supporte les deux syntaxes.
+      ##########################################################################
+      ensure: absent
+      # databaseReclaimPolicy: delete
+
+      ##########################################################################
+      # SCHEMAS
+      #
+      # Chaque schéma peut définir :
+      #  - name
+      #  - owner
+      #  - ensure : present | absent
+      #
+      # CNPG garde la main uniquement sur la création/suppression
+      # (pas le contenu du schéma).
+      ##########################################################################
+      schemas:
+        - name: app
+          owner: app
+          ensure: present
+
+################################################################################
+# MONITORING — PodMonitor + Custom Metrics
+#
+# CloudNativePG expose :
+#   - un exporter natif sur le port 9187
+#   - un endpoint /metrics
+#   - un service <cluster>-monitoring
+#
+# Les métriques sont exécutées sous PostgreSQL dans des transactions atomiques
+# avec le rôle pg_monitor.
+#
+# Ce bloc couvre :
+#  - PodMonitor pour surveiller un cluster
+#  - PodMonitor pour surveiller un Pooler
+#  - ConfigMap custom-queries pour ajouter des métriques personnalisées
+################################################################################
+
+###############################################################################
+# 1) PodMonitor CNPG pour le cluster PostgreSQL
+#
+# À utiliser avec Prometheus Operator.
+# Le selector doit cibler les pods :
+#     matchLabels:
+#       cnpg.io/cluster: <cluster-name>
+#
+# TLS :
+# CloudNativePG génère 4 certificats autorisant une connexion TLS au metrics exporter :
+#   - <cluster>-ca
+#   - <cluster>-server
+#   - <cluster>-replication
+#   - <cluster>-client
+#
+# Le PodMonitor TLS doit donc spécifier :
+#   - le CA : <cluster>-ca
+#   - le serverName : un SAN valide du certificat serveur (ex: <cluster>-rw)
+################################################################################
+
+monitors:
+
+  - name: cluster-example
+    selector:
+      cnpg.io/cluster: cluster-example
+
+    port: metrics
+    scheme: https
+
+    tlsConfig:
+      ca:
+        secret:
+          name: "cluster-example-ca"
+          key: "ca.crt"
+      serverName: "cluster-example-rw"
+
+
+  ##############################################################################
+  # 2) PodMonitor pour un Pooler PgBouncer
+  #
+  # Cible les pods portant :
+  #   cnpg.io/poolerName: <pooler-name>
+  ##############################################################################
+  - name: my-pooler
+    selector:
+      cnpg.io/poolerName: "my-pooler"
+    port: metrics
+
+
+
+################################################################################
+# CUSTOM QUERIES CONFIGMAP — Ajout de métriques personnalisées
+#
+# CloudNativePG supporte une syntaxe avancée :
+#
+#   <MetricName>:
+#     query: "<SQL>"
+#     metrics:
+#       - <column>:
+#           usage: GAUGE|LABEL|COUNTER|MAPPEDMETRIC
+#           description: "<description>"
+#
+# Options avancées :
+#   - predicate_query : faire exécuter la métrique seulement si condition true
+#   - target_databases : exécuter sur N bases → ajoute label datname
+#   - name : surcharge du nom de la métrique résultante
+#
+# Sortie :
+#   cnpg_<MetricName>_<ColumnName>{<labels>} <value>
+#
+# IMPORTANT :
+#   - La ConfigMap définie via customQueriesConfigMap est AUTOMATIQUEMENT ajoutée.
+#   - Il n’est PAS nécessaire de la dupliquer dans additionalCustomQueriesConfigMap.
+################################################################################
+
+customQueriesConfigMap:
+  name: example-monitoring
+  key: custom-queries
+  content: |
+    ## Exemple : métriques de réplication
+    pg_replication:
+      query: "SELECT CASE WHEN NOT pg_is_in_recovery()
+              THEN 0
+              ELSE GREATEST (0,
+                EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
+              END AS lag,
+              pg_is_in_recovery() AS in_recovery,
+              EXISTS (TABLE pg_stat_wal_receiver) AS is_wal_receiver_up,
+              (SELECT count(*) FROM pg_stat_replication) AS streaming_replicas"
+
+      metrics:
+        - lag:
+            usage: "GAUGE"
+            description: "Replication lag behind primary in seconds"
+
+        - in_recovery:
+            usage: "GAUGE"
+            description: "Whether the instance is in recovery"
+
+        - is_wal_receiver_up:
+            usage: "GAUGE"
+            description: "Whether the instance wal_receiver is up"
+
+        - streaming_replicas:
+            usage: "GAUGE"
+            description: "Number of streaming replicas connected to the instance"
+
+
+    ## Exemple : predicate_query (exécute la métrique seulement si predicate=true)
+    some_query:
+      predicate_query: |
+        SELECT some_bool as predicate FROM some_table
+      query: |
+        SELECT count(*) as rows FROM some_table
+      metrics:
+        - rows:
+            usage: "GAUGE"
+            description: "number of rows"
+
+
+    ## Exemple : multi-databases → label datname auto
+    some_query_2:
+      query: |
+        SELECT current_database() as datname, count(*) as rows FROM some_table
+      metrics:
+        - datname:
+            usage: "LABEL"
+            description: "Database name"
+
+        - rows:
+            usage: "GAUGE"
+            description: "number of rows"
+
+      target_databases:
+        - albert
+        - bb
+        - freddie
+
+
+    ## Exemple : métriques avec plusieurs labels
+    some_query_3:
+      query: |
+        SELECT current_database() as datname,
+               state,
+               COUNT(*) as connections
+        FROM pg_stat_activity
+        GROUP BY datname, state
+
+      metrics:
+        - datname:
+            usage: "LABEL"
+        - state:
+            usage: "LABEL"
+        - connections:
+            usage: "GAUGE"
+
+################################################################################
+# MONITORING – Custom Queries for Metrics Exporter
+#
+# Permet de charger des requêtes personnalisées dans le metrics-exporter.
+#
+# Chaque entrée :
+#   - name: nom du ConfigMap
+#   - key : clé du ConfigMap contenant les requêtes
+#
+# Autres ConfigMaps EXISTANTES, CRÉES HORS CUSTOMQUERIESCONFIGMAP
+################################################################################
+monitoring:
+  additionalCustomQueriesConfigMap: []
+  # Exemple :
+  # - name: "example-monitoring"
+  #   key: "custom-queries"
+
+
+
+################################################################################
+# POOLERS — PgBouncer intégré à CloudNativePG
+#
+# Un Pooler est un Deployment géré par CNPG, devant un service PostgreSQL.
+# Il améliore :
+#   - la réutilisation des connexions
+#   - la réduction du coût CPU côté PostgreSQL
+#   - la scalabilité applicative
+#
+# TYPES DE POOLER :
+#   - rw : vers le service primaire <cluster>-rw
+#   - ro : vers les réplicas <cluster>-ro
+#
+# PARAMÈTRES IMPORTANTES :
+#   poolMode :
+#       session  — mode standard
+#       transaction
+#       statement
+#
+#   max_client_conn   — nombre maximal de connexions clientes acceptées
+#   default_pool_size — nombre de connexions PostgreSQL par pool
+#
+# Un pooler peut aussi fournir un serviceTemplate personnalisé.
+################################################################################
+
+poolers:
+
+  - name: pooler-example-rw
+
+    ##########################################################################
+    # Cluster PostgreSQL cible
+    ##########################################################################
+    cluster: "cluster-example"
+
+    ##########################################################################
+    # Nombre d’instances PgBouncer
+    ##########################################################################
+    instances: 3
+
+    ##########################################################################
+    # Cible : rw (primaire) | ro (réplicas)
+    ##########################################################################
+    type: rw
+
+    ##########################################################################
+    # Paramètres PgBouncer (pooling)
+    ##########################################################################
+    pgbouncer:
+      poolMode: session
+      parameters:
+        max_client_conn: "1000"
+        default_pool_size: "10"
+        query_timeout: "300"
+
+    ##########################################################################
+    # Service exposé par le Pooler
+    #
+    # Peut servir à :
+    #   - ajouter des labels
+    #   - transformer en LoadBalancer
+    #   - ajouter des annotations (monitoring, ingress, etc.)
+    ##########################################################################
+    serviceTemplate:
+      metadata:
+        labels:
+          app: pooler
+      spec:
+        type: LoadBalancer

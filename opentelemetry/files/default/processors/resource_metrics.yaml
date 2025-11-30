@@ -1,0 +1,8 @@
+resource/metrics:
+  attributes:
+    - action: upsert
+      key: service.namespace
+      from_attribute: k8s.namespace.name
+    - action: upsert
+      key: k8s.container.name
+      from_attribute: k8s.container.name

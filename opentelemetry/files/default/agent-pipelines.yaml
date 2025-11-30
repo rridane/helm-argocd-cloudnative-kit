@@ -1,0 +1,33 @@
+pipelines:
+  metrics:
+    receivers:
+      - hostmetrics
+      - kubeletstats
+      - k8s_cluster
+    processors:
+      - k8sattributes
+      - batch
+      - memory_limiter
+    exporters:
+      - otlp
+
+  logs:
+    receivers:
+      - filelog
+      - k8s_events
+    processors:
+      - k8sattributes
+      - transform
+      - resource/logs
+      - batch
+      - memory_limiter
+    exporters:
+      - otlp
+
+  profiles:
+    receivers:
+      - otlp
+    processors:
+      - resource/profiles
+    exporters:
+      - otlp

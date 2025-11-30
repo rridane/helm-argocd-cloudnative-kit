@@ -2,22 +2,22 @@ defaultStorageClass: persistent-platform-data
 defaultAccessMode:
   - ReadWriteOnce
 
-claims:
-  security:
-    namespace: vault
-    pvc:
-      - name: vault-data-pvc
-        storageRequest: 20Gi
-        volumeIri: "vault/vault-server/data"
-  monitoring:
-    namespace: monitoring
-    pvc:
-      - name: prometheus-data-pvc
-        volumeIri: "prometheus/data"
-        storageRequest: 20Gi
-      - name: prometheus-logs
-        volumeIri: "prometheus/logs"
-        storageRequest: 20Gi
-        storageClass: "ephemere-platform-data"
-        accessModes:
-          - ReadWriteMany
+#claims:
+#  security:
+#    namespace: vault
+#    pvc:
+#      - name: vault-data-pvc
+#        storageRequest: 20Gi
+#        volumeIri: "vault/vault-server/data"
+#  monitoring:
+#    namespace: monitoring
+#    pvc:
+#      - name: prometheus-data-pvc
+#        volumeIri: "prometheus/data"
+#        storageRequest: 20Gi
+#      - name: prometheus-logs
+#        volumeIri: "prometheus/logs"
+#        storageRequest: 20Gi
+#        storageClass: "ephemere-platform-data"
+#        accessModes:
+#          - ReadWriteMany

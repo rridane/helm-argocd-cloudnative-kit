@@ -1,0 +1,11 @@
+filelog:
+  include:
+    - /var/log/pods/*/*/*.log
+  include_file_path: true
+  start_at: beginning
+  poll_interval: 100ms
+  operators:
+    - id: parse-k8s-path
+      type: regex_parser
+      regex: '^/var/log/pods/(?P<k8s_namespace>[^_]+)_(?P<k8s_pod_name>[^/]+)/(?P<k8s_container_name>[^/]+)/'
+      parse_from: attributes["log.file.path"]
