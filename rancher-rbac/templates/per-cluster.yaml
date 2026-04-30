@@ -1,0 +1,41 @@
+{{- /*
+Pour chaque cluster, et pour chaque project défini globalement :
+  - 1 Project (namespace = cluster id, name = project.name)
+  - N ProjectRoleTemplateBindings (namespace = backing ns du project)
+
+Le sync-wave ArgoCD garantit que le Project est appliqué avant les PRTBs
+(le backing namespace est créé par Rancher quand le Project apparaît).
+*/ -}}
+{{- $values := .Values }}
+{{- range $cluster := .Values.clusters }}
+{{- range $project := $values.projects }}
+{{- $backingNs := include "rancher-rbac.projectBackingNs" (dict "clusterId" $cluster.id "projectName" $project.name) }}
+---
+apiVersion: management.cattle.io/v3
+kind: Project
+metadata:
+  name: {{ $project.name }}
+  namespace: {{ $cluster.id }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  clusterName: {{ $cluster.id }}
+  displayName: {{ $project.displayName | default $project.name }}
+  description: {{ printf "%s — %s" ($project.description | default $project.name) $cluster.label | quote }}
+{{- range $b := $project.bindings }}
+{{- $group := index $values.keycloakGroups $b.group }}
+{{- $roleName := (index $values.roleTemplates $b.role).name }}
+---
+apiVersion: management.cattle.io/v3
+kind: ProjectRoleTemplateBinding
+metadata:
+  name: {{ printf "%s-%s" $b.group $b.role | lower }}
+  namespace: {{ $backingNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+projectName: {{ printf "%s:%s" $cluster.id $project.name }}
+roleTemplateName: {{ $roleName }}
+groupPrincipalName: {{ include "rancher-rbac.keycloakGroupPrincipal" $group }}
+{{- end }}
+{{- end }}
+{{- end }}

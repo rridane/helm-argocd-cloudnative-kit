@@ -1,0 +1,55 @@
+{{- /*
+Ressources globales Rancher (cluster-scoped sur le local cluster) :
+  - GlobalRole custom
+  - RoleTemplates project-scoped (avec héritage optionnel)
+  - GlobalRoleBindings login (groupes Keycloak → role "user")
+  - GlobalRoleBindings vers le GlobalRole custom
+*/ -}}
+{{- with .Values.globalRole }}
+---
+apiVersion: management.cattle.io/v3
+kind: GlobalRole
+metadata:
+  name: {{ .name }}
+displayName: {{ .displayName }}
+rules:
+{{ toYaml .rules | indent 2 }}
+{{- end }}
+
+{{- range $key, $rt := .Values.roleTemplates }}
+---
+apiVersion: management.cattle.io/v3
+kind: RoleTemplate
+metadata:
+  name: {{ $rt.name }}
+displayName: {{ $rt.displayName }}
+context: project
+{{- with $rt.roleTemplateNames }}
+roleTemplateNames:
+{{ toYaml . | indent 2 }}
+{{- end }}
+rules:
+{{ toYaml $rt.rules | indent 2 }}
+{{- end }}
+
+{{- range $key := .Values.allowedLoginGroups }}
+{{- $group := index $.Values.keycloakGroups $key }}
+---
+apiVersion: management.cattle.io/v3
+kind: GlobalRoleBinding
+metadata:
+  name: {{ printf "rancher-login-%s" $group }}
+globalRoleName: user
+groupPrincipalName: {{ include "rancher-rbac.keycloakGroupPrincipal" $group }}
+{{- end }}
+
+{{- range $key := .Values.allowedGlobalRoleGroups }}
+{{- $group := index $.Values.keycloakGroups $key }}
+---
+apiVersion: management.cattle.io/v3
+kind: GlobalRoleBinding
+metadata:
+  name: {{ printf "%s-%s" $.Values.globalRole.name $group }}
+globalRoleName: {{ $.Values.globalRole.name }}
+groupPrincipalName: {{ include "rancher-rbac.keycloakGroupPrincipal" $group }}
+{{- end }}

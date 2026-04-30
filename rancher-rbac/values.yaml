@@ -1,0 +1,58 @@
+# GlobalRole custom (cluster-scoped sur le local cluster Rancher).
+# Le caller fournit les rules.
+globalRole:
+  name: ""
+  displayName: ""
+  rules: []
+
+# RoleTemplates project-scoped utilisés dans les bindings de chaque project.
+# Le caller fournit les rules. Les clés (extended, basics, ...) servent
+# d'alias référencés dans projects[].bindings[].role.
+roleTemplates: {}
+# Exemple :
+#   extended:
+#     name: invoice-cluster-extended
+#     displayName: Invoice-cluster-extended
+#     rules: [ ... ]
+
+# Groupes Keycloak. Annuaire alias → vrai nom du groupe côté Keycloak.
+# Toutes les autres sections référencent l'alias court, jamais le nom complet.
+keycloakGroups: {}
+# Exemple :
+#   productLeads: development-product-leads
+#   projectLeads: development-project-leads
+
+# Liste des alias keycloakGroups qui obtiennent le GlobalRole "user" Rancher
+# (= droit de se connecter à l'UI). Sans ça, le SSO authentifie mais Rancher
+# refuse l'accès.
+allowedLoginGroups: []
+# Exemple : [productLeads, projectLeads]
+
+# Liste des alias keycloakGroups qui obtiennent le GlobalRole custom défini
+# dans .Values.globalRole.
+allowedGlobalRoleGroups: []
+# Exemple : [productLeads, projectLeads]
+
+# Projects globaux : créés sur CHAQUE cluster listé. Chaque project a son
+# propre mapping bindings[] (groupe Keycloak → roleTemplate).
+projects: []
+# Exemple :
+#   - name: invoice-apps
+#     displayName: invoice-apps
+#     description: Application workloads
+#     bindings:
+#       - { group: productLeads, role: extended }
+#       - { group: projectLeads, role: basics }
+#   - name: tooling
+#     displayName: tooling
+#     description: Shared tooling
+#     bindings:
+#       - { group: productLeads, role: extended }
+
+# Clusters Rancher gérés. Pour chaque cluster, le chart génère :
+#   * 1 Project par entrée de .Values.projects (namespace = cluster id)
+#   * Les PRTBs définis dans bindings[] de chaque project
+clusters: []
+# Exemple :
+#   - { id: c-xqtqn, label: prd-pa }
+#   - { id: c-rzwj7, label: re-pp-pa }

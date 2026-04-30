@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rancher-rbac
+description: Génère du RBAC Rancher déclaratif (GlobalRole, RoleTemplates, GlobalRoleBindings, Project, ProjectRoleTemplateBindings) à partir d'une liste de clusters et d'un mapping groupes Keycloak → rôles.
+version: 0.1.0
+type: application
+appVersion: "1.0.0"
