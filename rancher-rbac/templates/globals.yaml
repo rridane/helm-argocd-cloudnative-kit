@@ -2,6 +2,7 @@
 Ressources globales Rancher (cluster-scoped sur le local cluster) :
   - GlobalRole custom
   - RoleTemplates project-scoped (avec héritage optionnel)
+  - RoleTemplates cluster-scoped (pour CRTB)
   - GlobalRoleBindings login (groupes Keycloak → role "user")
   - GlobalRoleBindings vers le GlobalRole custom
 */ -}}
@@ -24,6 +25,22 @@ metadata:
   name: {{ $rt.name }}
 displayName: {{ $rt.displayName }}
 context: project
+{{- with $rt.roleTemplateNames }}
+roleTemplateNames:
+{{ toYaml . | indent 2 }}
+{{- end }}
+rules:
+{{ toYaml $rt.rules | indent 2 }}
+{{- end }}
+
+{{- range $key, $rt := .Values.clusterRoleTemplates }}
+---
+apiVersion: management.cattle.io/v3
+kind: RoleTemplate
+metadata:
+  name: {{ $rt.name }}
+displayName: {{ $rt.displayName }}
+context: cluster
 {{- with $rt.roleTemplateNames }}
 roleTemplateNames:
 {{ toYaml . | indent 2 }}
