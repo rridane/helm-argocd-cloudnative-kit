@@ -82,4 +82,4 @@ Ce chart ne gère **pas** le mapping namespace → project (annotation `field.ca
 helm template rbac . --values myvalues.yaml > rbac.yaml
 ```
 
-Ou via le pattern caller (cf. `tessi-helm-bridge/rancher-rbac/`).
+Ou en dépendance d'un chart parapluie (umbrella) qui l'appelle avec ses values.
