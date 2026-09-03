@@ -19,9 +19,9 @@ keywords:
   - gitops
   - argocd
 
-home: https://github.com/rridane/helm-argocd-management-kit/tree/main/pvc-generator
+home: https://github.com/rridane/helm-argocd-cloudnative-kit/tree/main/pvc-generator
 sources:
-  - https://github.com/rridane/helm-argocd-management-kit
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
   - https://artifacthub.io
 
 maintainers:
@@ -34,7 +34,7 @@ annotations:
   artifacthub.io/category: storage
   artifacthub.io/links: |
     - name: Source
-      url: https://github.com/rridane/helm-argocd-management-kit/tree/main/pvc-generator
+      url: https://github.com/rridane/helm-argocd-cloudnative-kit/tree/main/pvc-generator
     - name: Maintainer
       url: https://github.com/rridane
   artifacthub.io/prerelease: "false"

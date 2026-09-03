@@ -1,7 +1,23 @@
 apiVersion: v2
 name: cloudnative-pg
-description: A Helm chart for deploying cloundative-pg.
+description: Declarative CloudNativePG database from values — Cluster, pgbouncer Pooler, Barman-cloud backup to S3, ImageCatalog and scheduled backups.
 type: application
 version: 0.1.0
-appVersion: "2-s6"
-icon: https://raw.githubusercontent.com/filebrowser/logo/master/banner.png
+appVersion: "1.0.0"
+keywords:
+  - postgresql
+  - cloudnative-pg
+  - database
+  - backup
+  - gitops
+home: https://github.com/rridane/helm-argocd-cloudnative-kit
+sources:
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
+  - https://cloudnative-pg.io/
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: database

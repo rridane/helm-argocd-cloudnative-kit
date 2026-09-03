@@ -1,6 +1,23 @@
 apiVersion: v2
 name: parca
-description: Parca Server and Agent for continuous profiling on Kubernetes
+description: Parca server and agent for continuous profiling on Kubernetes.
 type: application
 version: 0.1.0
 appVersion: "v0.42.0"
+keywords:
+  - parca
+  - profiling
+  - observability
+  - ebpf
+  - kubernetes
+home: https://github.com/rridane/helm-argocd-cloudnative-kit
+sources:
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
+  - https://www.parca.dev/
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: monitoring-logging

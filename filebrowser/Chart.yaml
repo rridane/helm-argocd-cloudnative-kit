@@ -1,7 +1,23 @@
 apiVersion: v2
 name: filebrowser
-description: A Helm chart for deploying Filebrowser with NFS-backed storage
+description: Filebrowser web file manager, deployed from values with a backing PVC.
 type: application
 version: 0.1.0
 appVersion: "2-s6"
 icon: https://raw.githubusercontent.com/filebrowser/logo/master/banner.png
+keywords:
+  - filebrowser
+  - files
+  - storage
+  - kubernetes
+home: https://github.com/rridane/helm-argocd-cloudnative-kit
+sources:
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
+  - https://filebrowser.org/
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: storage

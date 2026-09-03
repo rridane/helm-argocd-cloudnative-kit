@@ -1,6 +1,28 @@
 apiVersion: v2
 name: otel-collector-generator
-description: Générateur OpenTelemetryCollector à partir de fragments YAML (receivers, processors, exporters, connectors)
-version: 0.1.0
+description: |
+  Helm framework to deploy a multi-role OpenTelemetry Collector (gateway,
+  DaemonSet agent, singleton scraper) from modular YAML fragments (receivers,
+  processors, exporters, connectors, pipelines).
 type: application
-appVersion: "1.0.0"
+version: 0.2.0
+appVersion: "0.140.1"
+keywords:
+  - opentelemetry
+  - observability
+  - monitoring
+  - kubernetes
+  - mimir
+  - tempo
+  - loki
+home: https://github.com/rridane/helm-argocd-cloudnative-kit
+sources:
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
+  - https://opentelemetry.io/docs/collector/
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: monitoring-logging

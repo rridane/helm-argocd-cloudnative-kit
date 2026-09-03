@@ -1,6 +1,22 @@
 apiVersion: v2
 name: rancher-rbac
 description: Génère du RBAC Rancher déclaratif (GlobalRole, RoleTemplates, GlobalRoleBindings, Project, ProjectRoleTemplateBindings) à partir d'une liste de clusters et d'un mapping groupes Keycloak → rôles.
-version: 0.1.0
 type: application
+version: 0.1.0
 appVersion: "1.0.0"
+keywords:
+  - rancher
+  - rbac
+  - keycloak
+  - oidc
+  - kubernetes
+home: https://github.com/rridane/helm-argocd-cloudnative-kit
+sources:
+  - https://github.com/rridane/helm-argocd-cloudnative-kit
+maintainers:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
+    url: https://github.com/rridane
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: security
