@@ -1,0 +1,45 @@
+name: release-charts
+
+# Publie les charts comme artefacts OCI sur ghcr.io/rridane/charts.
+# Déclenché sur un tag `v*` (release) ou à la main. Chaque chart est poussé sous
+# sa version (Chart.yaml). Bumper la version d'un chart = publier une nouvelle release.
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write        # requis pour pousser sur ghcr
+
+jobs:
+  oci-release:
+    runs-on: ubuntu-latest
+    env:
+      OCI_REPO: oci://ghcr.io/${{ github.repository_owner }}/charts
+      CHARTS: "cloudnative-pg filebrowser gateway-http-routes opentelemetry parca pvc-generator rancher-rbac"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Package & push charts (OCI)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pkg
+          for chart in $CHARTS; do
+            echo "::group::$chart"
+            rm -f /tmp/pkg/*.tgz
+            helm dependency build "$chart" 2>/dev/null || true
+            helm package "$chart" --destination /tmp/pkg
+            helm push /tmp/pkg/*.tgz "$OCI_REPO" 
+            echo "::endgroup::"
+          done
+
+      # NB : au 1er push, les packages ghcr sont PRIVÉS par défaut. Pour un pull
+      # anonyme (ArgoCD / ArtifactHub), passe chaque package en "public" une fois
+      # (Profil GitHub → Packages → <chart> → Package settings → Change visibility).

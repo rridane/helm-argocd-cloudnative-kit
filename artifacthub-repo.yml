@@ -1,0 +1,7 @@
+# Métadonnées ArtifactHub du dépôt (ownership + verified publisher).
+# https://artifacthub.io/docs/topics/repositories/
+# repositoryID : à coller après avoir enregistré le repo sur ArtifactHub.
+repositoryID: ""
+owners:
+  - name: Rida Ridane
+    email: rridane@rr-dev.com
