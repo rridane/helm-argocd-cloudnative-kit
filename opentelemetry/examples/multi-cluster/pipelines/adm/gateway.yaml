@@ -1,0 +1,11 @@
+# Gateway adm : ingest OTLP passif, route vers les backends.
+pipelines:
+  metrics:
+    receivers: [otlp, spanmetrics]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlphttp/backend]
+
+  traces:
+    receivers: [otlp]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlphttp/backend, spanmetrics]

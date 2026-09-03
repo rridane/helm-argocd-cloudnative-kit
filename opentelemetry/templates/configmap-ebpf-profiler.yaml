@@ -1,11 +1,8 @@
-{{- if .Values.agent.enabled }}
+{{- if .Values.ebpfProfiler.enabled }}
 {{- /*
-  Génère le ConfigMap AGENT avec filtrage automatique des fragments
-  en fonction de `agent.pipelinesFile`.
-
-  Les `extensions` sont rendues sans filtrage (elles ne sont pas dans les
-  pipelines). Toutes celles trouvées sont chargées et listées dans
-  `service.extensions`.
+  Génère le ConfigMap eBPF PROFILER avec filtrage automatique des fragments
+  en fonction de `ebpfProfiler.pipelinesFile`. Logique strictement identique
+  à celle des 3 autres rôles (gateway/agent/scraper).
 */ -}}
 
 {{- $conf := dict
@@ -16,7 +13,11 @@
   "extensions" dict
 -}}
 
-{{- $kinds := list "receivers" "processors" "exporters" "connectors" "extensions" }}
+{{- /* ebpf-profiler binaire ≠ contrib : il ne supporte qu'un subset d'extensions
+       (opamp, health_check, pprof). On exclut donc `extensions` du
+       fragmentDirs pour ce rôle — pas d'`extensions:` ni de
+       `service.extensions` rendus. Si besoin d'en ajouter un jour, on filtrera. */ -}}
+{{- $kinds := list "receivers" "processors" "exporters" "connectors" }}
 
   # Fusion ordonnée des fragments : pour chaque kind, parcours la liste des
   # dossiers et mergeOverwrite chacun par-dessus le résultat courant. Le
@@ -37,8 +38,8 @@
   {{- end }}
 {{- end }}
 
-  # Pipelines AGENT
-{{- $pipelines := fromYaml (.Files.Get (trimPrefix "./" .Values.agent.pipelinesFile)) }}
+  # Pipelines eBPF PROFILER
+{{- $pipelines := fromYaml (.Files.Get (trimPrefix "./" .Values.ebpfProfiler.pipelinesFile)) }}
 
   # Extraction des éléments réellement utilisés
 {{- $usedReceivers := list }}
@@ -79,7 +80,6 @@
   {{- end }}
 {{- end }}
 
-  # Connectors utilisés uniquement s'ils apparaissent en receiver ou exporter
 {{- $filteredConnectors := dict }}
 {{- range $name, $item := (get $conf "connectors") }}
   {{- if or (mustHas $name $usedReceivers) (mustHas $name $usedExporters) }}
@@ -87,27 +87,13 @@
   {{- end }}
 {{- end }}
 
-  # Extensions : pas de filtrage par pipeline. `service.extensions` reçoit la
-  # liste plate des keys, ordre stable.
-{{- $extensions := get $conf "extensions" }}
-{{- $extensionKeys := list }}
-{{- range $name, $_ := $extensions }}
-  {{- $extensionKeys = append $extensionKeys $name }}
-{{- end }}
-{{- $extensionKeys = sortAlpha $extensionKeys }}
-
-  # Construction finale du fichier agent
 {{- $serviceBlock := dict "pipelines" $pipelines.pipelines }}
-{{- if $extensionKeys }}
-  {{- $_ := set $serviceBlock "extensions" $extensionKeys }}
-{{- end }}
 
-{{- $agentConfig := dict
+{{- $ebpfConfig := dict
   "receivers"  $filteredReceivers
   "processors" $filteredProcessors
   "exporters"  $filteredExporters
   "connectors" $filteredConnectors
-  "extensions" $extensions
   "service"    $serviceBlock
 -}}
 
@@ -115,9 +101,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: otel-agent-configmap
+  name: otel-ebpf-profiler-configmap
   namespace: {{ .Values.namespace }}
 data:
   config.yaml: |
-{{ toYaml $agentConfig | indent 4 }}
+{{ toYaml $ebpfConfig | indent 4 }}
 {{- end }}

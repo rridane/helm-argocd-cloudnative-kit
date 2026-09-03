@@ -1,8 +1,0 @@
-otlphttp/loki:
-  logs_endpoint: http://loki-gateway.loki.svc/otlp/v1/logs
-  compression: gzip
-  retry_on_failure:
-    enabled: true
-    initial_interval: 5s
-    max_interval: 30s
-    max_elapsed_time: 300s

@@ -1,0 +1,72 @@
+{{- /*
+Scraper : Deployment SINGLETON (replicas: 1 obligatoire) qui scrape les
+sources cluster-wide (prometheus pour kube-state-metrics, k8s_cluster,
+k8s_events). Singleton volontaire pour éviter la duplication des séries
+côté Mimir/Loki — cf. doc OTel "Scaling the Collector".
+
+Pas de hostNetwork ni hostPID : le scraper est un pousseur, pas un agent
+node-local. Il pousse via OTLP vers le gateway (in-cluster ou remote).
+*/ -}}
+{{- if .Values.scraper.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}-scraper
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    component: otel-scraper
+spec:
+  # Forcé à 1 — augmenter dupliquerait les métriques scrapées.
+  replicas: 1
+  strategy:
+    # Pas de Recreate : pendant un rollout on accepte 0-1 pod simultané plutôt
+    # que > 1 (évite duplication même transitoire).
+    type: Recreate
+  selector:
+    matchLabels:
+      app: opentelemetry
+      component: otel-scraper
+  template:
+    metadata:
+      labels:
+        app: opentelemetry
+        component: otel-scraper
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.scraper.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otel-scraper
+          image: {{ .Values.image }}
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          args:
+            - "--config=/etc/otelcol-contrib/config.yaml"
+            {{- range .Values.featureGates }}
+            - "{{ . }}"
+            {{- end }}
+          resources:
+            {{- toYaml .Values.scraper.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /etc/otelcol-contrib/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            {{- with .Values.scraper.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          configMap:
+            name: otel-scraper-configmap
+        {{- with .Values.scraper.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

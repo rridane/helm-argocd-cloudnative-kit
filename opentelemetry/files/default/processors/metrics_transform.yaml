@@ -1,8 +1,0 @@
-metricstransform:
-  transforms:
-    - action: update
-      include: queueSize
-      new_name: queue_size_logs
-      match_type: regexp
-      experimental_match_labels:
-        logRecordProcessorType: BatchLogRecordProcessor

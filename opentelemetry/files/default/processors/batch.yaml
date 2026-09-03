@@ -1,3 +1,0 @@
-batch:
-  send_batch_size: 500
-  timeout: 15s

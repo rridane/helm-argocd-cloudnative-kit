@@ -1,0 +1,7 @@
+# Scraper downstream : SINGLETON. Scrape kube-state-metrics du downstream,
+# push vers la gateway adm.
+pipelines:
+  metrics:
+    receivers: [prometheus]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlp/upstream]

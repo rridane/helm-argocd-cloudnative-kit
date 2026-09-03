@@ -1,0 +1,6 @@
+# Sur les clusters downstream, agent et scraper poussent toute la télémétrie
+# vers la gateway centrale d'adm. À adapter à ton réseau (LB, NodePort, etc.).
+otlp/upstream:
+  endpoint: gateway.adm.example:4317
+  tls:
+    insecure: true

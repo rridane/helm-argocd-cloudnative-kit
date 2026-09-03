@@ -1,0 +1,9 @@
+# Génère des métriques RED (rate/errors/duration) à partir des spans.
+# Centralisé sur la gateway adm (single source of truth).
+spanmetrics:
+  histogram:
+    explicit:
+      buckets: [10ms, 100ms, 250ms, 500ms, 1s, 5s, 10s]
+  dimensions:
+    - name: service.name
+    - name: http.status_code

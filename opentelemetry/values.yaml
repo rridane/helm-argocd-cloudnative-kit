@@ -1,29 +1,198 @@
+# Values par défaut. À surcharger via un values externe (cf. examples/).
 namespace: observability
-name: invoiced
+name: collector
 
-replicas: 3
-serviceAccountName: otelcontribcol
+serviceAccountName: otel-collector
 image: otel/opentelemetry-collector-contrib:0.140.1
-featureGates:
-  - "--feature-gates=filelog.allowHeaderMetadataParsing"
-  - "--feature-gates=service.profilesSupport"
-  - "--feature-gates=transform.flatten.logs"
-resources:
-  limits:
-    cpu: 200m
-    memory: 500Mi
-  requests:
-    cpu: 200m
-    memory: 500Mi
+featureGates: []
 
 labels:
   app: opentelemetry
   component: otel-collector
 
-# Répertoires contenant les fragments YAML
-receiversDir: "files/default/receivers"
-processorsDir: "files/default/processors"
-exportersDir: "files/default/exporters"
-connectorsDir: "files/default/connectors"
-pipelinesFile: "files/default/pipelines.yaml"
-agentPipelinesFile: "files/default/agent-pipelines.yaml"
+# Trois rôles distincts (pattern recommandé pour le multi-cluster) :
+#
+#   gateway  : Deployment N répliques, ingest passif OTLP (push). Reçoit le
+#              trafic des agents et des apps instrumentées, route vers les
+#              backends. Naming officiel OTel ("Deployment patterns - Gateway").
+#
+#   agent    : DaemonSet, 1 pod par node. Scrape les sources node-local
+#              (hostmetrics, kubeletstats, filelog).
+#
+#   scraper  : Deployment SINGLETON (replicas: 1 obligatoire). Scrape les
+#              sources cluster-wide (prometheus pour kube-state-metrics,
+#              k8s_cluster, k8s_events). Singleton volontaire pour éviter la
+#              duplication des séries (cf. doc OTel "Scaling the Collector").
+
+# ============================================================================
+# Hooks d'extension du pod (gateway/agent/scraper) : 3 listes libres injectées
+# telles quelles dans le manifest. Le chart ne sait *pas* à quel composant OTel
+# elles servent — c'est volontaire pour rester agnostique des extensions.
+#
+# Tu poses ce que tu veux : une extension OTel qui a besoin d'un dir writable,
+# un secret, un PVC, un sidecar, un initContainer chmod, etc.
+# ----------------------------------------------------------------------------
+#
+# extraVolumes — liste de Volumes au format k8s standard (PodSpec.volumes).
+#   Tous les types de Volume k8s sont supportés (hostPath, emptyDir,
+#   configMap, secret, persistentVolumeClaim, projected, downwardAPI, csi…).
+#
+#   Exemples :
+#
+#     extraVolumes:
+#       # Storage éphémère partagé entre containers du pod.
+#       - name: scratch
+#         emptyDir: {}
+#
+#       # Storage local node-persistent (utile sur DaemonSet : le pod
+#       # retombe sur le même node au restart).
+#       - name: filelog-checkpoint
+#         hostPath:
+#           path: /var/lib/otelcol-checkpoint
+#           type: DirectoryOrCreate
+#
+#       # Secret monté en RO comme fichier (ex: bearer token, TLS).
+#       - name: tls
+#         secret:
+#           secretName: otel-tls
+#           defaultMode: 0400
+#
+#       # PVC pour persistance forte (Deployment 1 réplique uniquement).
+#       - name: state
+#         persistentVolumeClaim:
+#           claimName: otel-state
+#
+# extraVolumeMounts — liste de VolumeMounts au format k8s standard
+#   (Container.volumeMounts). Le `name` doit matcher un volume défini ci-dessus
+#   ou un volume déjà créé par le chart (data, varlogpods, varlogjournal,
+#   kubelet-pki côté agent ; data, varlog côté gateway ; data côté scraper).
+#
+#   Champs utilisés :
+#     name       : nom du volume (obligatoire, doit matcher un Volume).
+#     mountPath  : path d'attache dans le container (obligatoire).
+#     readOnly   : bool (default false).
+#     subPath    : monte un sous-élément du volume (default : la racine).
+#     subPathExpr: même chose avec expansion d'env vars.
+#
+#   Exemples :
+#
+#     extraVolumeMounts:
+#       - name: scratch
+#         mountPath: /tmp/scratch
+#       - name: tls
+#         mountPath: /etc/otel/tls
+#         readOnly: true
+#
+# initContainers — liste d'InitContainers au format k8s standard
+#   (PodSpec.initContainers). Tous les champs Container k8s sont supportés
+#   (image, command, args, env, securityContext, volumeMounts, resources…).
+#
+#   Cas d'usage typiques :
+#     - chown / chmod d'un hostPath créé en root:755 par kubelet pour le
+#       rendre writable par le user OTel (uid 10001 dans l'image upstream).
+#     - Bootstrap d'un fichier de config externe (curl + cp dans un volume).
+#     - Wait sur la disponibilité d'une dépendance (DNS resolution, port).
+#
+#   Exemple (chown du hostPath checkpoint pour le rendre writable par 10001) :
+#
+#     initContainers:
+#       - name: fix-perms
+#         image: busybox:1.37
+#         # `-R` important : si le hostPath contient des fichiers d'un run
+#         # précédent (ex: ancien deploy en runAsUser:0), ils restent en
+#         # root:root sans le chown récursif et le main container échoue.
+#         command: ["sh", "-c", "chown -R 10001:10001 /checkpoint && chmod -R u+rwX /checkpoint"]
+#         securityContext:
+#           runAsUser: 0
+#         volumeMounts:
+#           - name: filelog-checkpoint
+#             mountPath: /checkpoint
+#
+# ============================================================================
+
+# --- Gateway (ingest OTLP) ---
+gateway:
+  enabled: false
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  pipelinesFile: ""           # ex: "./pipelines/<variant>/gateway.yaml"
+  # Service ClusterIP toujours rendu si enabled. Activer nodePort pour
+  # exposer un point d'entrée externe (agents OTel des clusters enfants).
+  service:
+    nodePort:
+      enabled: false
+      port: 30790
+  extraVolumes: []
+  extraVolumeMounts: []
+  initContainers: []
+
+# --- Agent (DaemonSet par-node) ---
+agent:
+  enabled: false
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 300m, memory: 256Mi }
+  pipelinesFile: ""           # ex: "./pipelines/<variant>/agent.yaml"
+  extraVolumes: []
+  extraVolumeMounts: []
+  initContainers: []
+
+# --- Scraper (Deployment singleton cluster-wide) ---
+scraper:
+  enabled: false
+  # Forcé à 1 — augmenter ce nombre dupliquerait les métriques scrapées
+  # (chaque réplique faisant son propre GET vers les mêmes endpoints).
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 200m, memory: 512Mi }
+  pipelinesFile: ""           # ex: "./pipelines/<variant>/scraper.yaml"
+  extraVolumes: []
+  extraVolumeMounts: []
+  initContainers: []
+
+# --- eBPF profiler (DaemonSet privileged) ---
+# Distribution OTel collector spécialisée qui embarque le receiver `profiling`
+# (eBPF). Scrape system-wide les CPU profiles de tous les processus du node
+# sans toucher aux apps, et pousse en OTLP profiles via le pipeline défini.
+# La config est rendue exactement comme les 3 autres rôles (fragments +
+# overlay + filtrage par pipelines).
+ebpfProfiler:
+  enabled: false
+  # Image upstream OTel — c'est un binaire collector différent du contrib.
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-ebpf-profiler:0.148.0
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  pipelinesFile: ""           # ex: "./pipelines/<variant>/ebpf-profiler.yaml"
+  extraVolumes: []
+  extraVolumeMounts: []
+  initContainers: []
+
+# ============================================================================
+# Base de fragments YAML qui composent la conf OTel rendue. L'appelant les
+# dépose dans le chart via son `generate.sh` (cf. examples/multi-cluster/)
+# avant le rendu.
+#
+# Pour chacun des 5 kinds (receivers/processors/exporters/connectors/extensions),
+# une LISTE ORDONNÉE de dossiers. Chaque dossier est mergé par-dessus le
+# précédent avec `mergeOverwrite` : en cas de conflit de nom, le fragment du
+# dossier plus tard dans la liste gagne.
+#
+# Pattern typique : un dossier commun à tous les variants, puis un ou
+# plusieurs dossiers variant-specific qui peuvent override certains fragments
+# (ex: `resource/cluster` avec une valeur différente par cluster).
+#
+# Filtrage : les fragments receivers/processors/exporters/connectors sont
+# filtrés par les pipelines référencées (`<role>.pipelinesFile`). Les
+# extensions, elles, sont toujours toutes chargées (elles vivent au niveau
+# `service.extensions`, pas dans une pipeline).
+# ============================================================================
+fragmentDirs:
+  receivers:  []      # ex: ["./common/receivers"]
+  processors: []      # ex: ["./common/processors", "./per-cluster/<variant>/processors"]
+  exporters:  []      # ex: ["./per-cluster/<variant>/exporters"]
+  connectors: []
+  extensions: []      # ex: ["./common/extensions"]

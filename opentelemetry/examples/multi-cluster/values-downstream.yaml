@@ -1,0 +1,24 @@
+# Values pour les clusters DOWNSTREAM : pas de gateway local, push vers
+# la gateway centrale d'adm via OTLP.
+namespace: observability
+name: collector
+
+serviceAccountName: otel-collector
+image: otel/opentelemetry-collector-contrib:0.140.1
+
+labels:
+  app: opentelemetry
+  component: otel-collector
+
+gateway:
+  enabled: false
+agent:
+  enabled: true
+scraper:
+  enabled: true
+
+receiversDir:         "receivers"
+processorsDir:        "processors"
+exportersDir:         "per-cluster/downstream/exporters"
+agentPipelinesFile:   "pipelines/downstream/agent.yaml"
+scraperPipelinesFile: "pipelines/downstream/scraper.yaml"

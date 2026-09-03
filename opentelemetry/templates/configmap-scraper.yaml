@@ -1,7 +1,7 @@
-{{- if .Values.agent.enabled }}
+{{- if .Values.scraper.enabled }}
 {{- /*
-  Génère le ConfigMap AGENT avec filtrage automatique des fragments
-  en fonction de `agent.pipelinesFile`.
+  Génère le ConfigMap SCRAPER avec filtrage des receivers/processors/exporters/connectors
+  selon les pipelines déclarés dans `scraper.pipelinesFile`.
 
   Les `extensions` sont rendues sans filtrage (elles ne sont pas dans les
   pipelines). Toutes celles trouvées sont chargées et listées dans
@@ -37,8 +37,8 @@
   {{- end }}
 {{- end }}
 
-  # Pipelines AGENT
-{{- $pipelines := fromYaml (.Files.Get (trimPrefix "./" .Values.agent.pipelinesFile)) }}
+  # Pipelines SCRAPER
+{{- $pipelines := fromYaml (.Files.Get (trimPrefix "./" .Values.scraper.pipelinesFile)) }}
 
   # Extraction des éléments réellement utilisés
 {{- $usedReceivers := list }}
@@ -96,13 +96,13 @@
 {{- end }}
 {{- $extensionKeys = sortAlpha $extensionKeys }}
 
-  # Construction finale du fichier agent
+  # Construction finale du fichier scraper
 {{- $serviceBlock := dict "pipelines" $pipelines.pipelines }}
 {{- if $extensionKeys }}
   {{- $_ := set $serviceBlock "extensions" $extensionKeys }}
 {{- end }}
 
-{{- $agentConfig := dict
+{{- $scraperConfig := dict
   "receivers"  $filteredReceivers
   "processors" $filteredProcessors
   "exporters"  $filteredExporters
@@ -115,9 +115,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: otel-agent-configmap
+  name: otel-scraper-configmap
   namespace: {{ .Values.namespace }}
 data:
   config.yaml: |
-{{ toYaml $agentConfig | indent 4 }}
+{{ toYaml $scraperConfig | indent 4 }}
 {{- end }}

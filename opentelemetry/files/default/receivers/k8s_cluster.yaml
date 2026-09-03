@@ -1,4 +1,0 @@
-k8s_cluster:
-  collection_interval: 30s
-  node_conditions_to_report:
-    - Ready

@@ -1,0 +1,7 @@
+# Scraper adm : SINGLETON. Scrape kube-state-metrics et autres sources
+# cluster-wide. Push vers la gateway locale.
+pipelines:
+  metrics:
+    receivers: [prometheus]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlphttp/backend]

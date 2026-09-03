@@ -1,0 +1,6 @@
+# Agent adm : scrape node-local, push vers la gateway locale (in-cluster OTLP).
+pipelines:
+  metrics:
+    receivers: [hostmetrics]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlphttp/backend]

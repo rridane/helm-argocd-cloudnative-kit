@@ -1,0 +1,6 @@
+# Agent downstream : scrape node-local, push vers la gateway adm (remote OTLP).
+pipelines:
+  metrics:
+    receivers: [hostmetrics]
+    processors: [k8sattributes, memory_limiter, batch]
+    exporters: [otlp/upstream]

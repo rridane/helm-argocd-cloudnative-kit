@@ -1,3 +1,9 @@
+{{- /*
+Service du gateway. Le nom externe `<name>-collector` est conservé pour ne pas
+casser les agents downstream qui ciblent ce DNS en hardcodé. À renommer plus
+tard dans une migration coordonnée si on veut harmoniser le naming.
+*/ -}}
+{{- if .Values.gateway.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -11,10 +17,30 @@ spec:
   ports:
     - name: otlp
       port: 4317
-      targetPort: 4317  # ← Ajoutez targetPort
+      targetPort: 4317
     - name: http
       port: 4318
       targetPort: 4318
     - name: metrics
       port: 8000
       targetPort: 8000
+{{- if .Values.gateway.service.nodePort.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}-collector-nodeport
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- toYaml .Values.labels | nindent 4 }}
+  ports:
+    - name: otlp
+      port: 4317
+      targetPort: 4317
+      nodePort: {{ .Values.gateway.service.nodePort.port }}
+{{- end }}
+{{- end }}

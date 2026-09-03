@@ -1,0 +1,31 @@
+# Values pour le cluster CENTRAL (adm) : gateway + agent + scraper actifs,
+# exports vers les backends d'observabilité.
+namespace: observability
+name: collector
+
+serviceAccountName: otel-collector
+image: otel/opentelemetry-collector-contrib:0.140.1
+
+labels:
+  app: opentelemetry
+  component: otel-collector
+
+gateway:
+  enabled: true
+  replicas: 3
+  service:
+    nodePort:
+      enabled: true
+      port: 30790
+agent:
+  enabled: true
+scraper:
+  enabled: true
+
+receiversDir:         "receivers"
+processorsDir:        "processors"
+exportersDir:         "per-cluster/adm/exporters"
+connectorsDir:        "per-cluster/adm/connectors"
+gatewayPipelinesFile: "pipelines/adm/gateway.yaml"
+agentPipelinesFile:   "pipelines/adm/agent.yaml"
+scraperPipelinesFile: "pipelines/adm/scraper.yaml"

@@ -1,9 +1,0 @@
-hostmetrics:
-  collection_interval: 30s
-  scrapers:
-    cpu:
-    load:
-    memory:
-    disk:
-    network:
-    paging:

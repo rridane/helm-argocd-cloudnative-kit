@@ -1,0 +1,93 @@
+{{- /*
+eBPF profiler : DaemonSet privileged + hostPID. Scrape system-wide les CPU
+profiles de tous les processus du node via eBPF (~1% CPU overhead).
+Requirements eBPF : privileged, hostPID, mounts kernel (/sys, /proc,
+/lib/modules). Image binaire OTel collector spécialisé (n'a PAS le receiver
+profiling dans le contrib classique).
+*/ -}}
+{{- if .Values.ebpfProfiler.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.name }}-ebpf-profiler
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    component: otel-ebpf-profiler
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry
+      component: otel-ebpf-profiler
+  template:
+    metadata:
+      labels:
+        app: opentelemetry
+        component: otel-ebpf-profiler
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      hostPID: true
+      # Pas de hostNetwork : le binaire ebpf-profiler écoute self-metrics sur
+      # :8888 côté pod, ce qui collide avec les autres collectors hostNetwork
+      # du même node si on le partage. eBPF lui-même requiert hostPID +
+      # privileged (cf. securityContext du container), pas hostNetwork.
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.ebpfProfiler.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otel-ebpf-profiler
+          image: {{ .Values.ebpfProfiler.image }}
+          securityContext:
+            privileged: true
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          args:
+            - "--config=/etc/otelcol-contrib/config.yaml"
+            # `service.profilesSupport` est obligatoire pour activer le signal
+            # profiles (alpha) côté collector. Pas de `featureGates` global ici :
+            # le binaire ebpf-profiler est différent du contrib et ne supporte
+            # pas la même liste de feature gates (filelog/transform absents).
+            - "--feature-gates=service.profilesSupport"
+          resources:
+            {{- toYaml .Values.ebpfProfiler.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /etc/otelcol-contrib/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            # Accès kernel pour eBPF (tracing programs, kernel modules,
+            # perf events, /proc des processus tracés).
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+            {{- with .Values.ebpfProfiler.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          configMap:
+            name: otel-ebpf-profiler-configmap
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: modules
+          hostPath:
+            path: /lib/modules
+        {{- with .Values.ebpfProfiler.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

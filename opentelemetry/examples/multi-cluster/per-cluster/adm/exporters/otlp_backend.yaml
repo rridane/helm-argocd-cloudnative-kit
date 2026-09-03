@@ -1,0 +1,6 @@
+# Sur le cluster `adm` (central), la gateway exporte vers le backend
+# d'observabilité (ici Mimir via OTLP HTTP). À adapter à ton stack.
+otlphttp/backend:
+  endpoint: http://mimir.observability.svc:9090/otlp
+  tls:
+    insecure: true
