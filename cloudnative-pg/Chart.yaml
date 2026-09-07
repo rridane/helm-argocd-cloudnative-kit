@@ -2,7 +2,7 @@ apiVersion: v2
 name: cloudnative-pg
 description: Declarative CloudNativePG database from values — Cluster, pgbouncer Pooler, Barman-cloud backup to S3, ImageCatalog and scheduled backups.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.0.0"
 keywords:
   - postgresql

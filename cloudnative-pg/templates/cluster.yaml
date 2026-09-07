@@ -44,10 +44,10 @@ spec:
   probes:
   {{- include "cloudnative.probes" . | nindent 2 }}
   {{- end }}
-  smartShutDownTimeout: {{ .Values.smartShutDownTimeout | quote }}
-  stopDelay: {{ .Values.stopDelay | quote }}
-  switchoverDelay: {{ .Values.switchoverDelay | quote }}
-  failoverDelay: {{ .Values.failoverDelay | quote }}
+  smartShutDownTimeout: {{ .Values.smartShutDownTimeout }}
+  stopDelay: {{ .Values.stopDelay }}
+  switchoverDelay: {{ .Values.switchoverDelay }}
+  failoverDelay: {{ .Values.failoverDelay }}
   {{- with .Values.affinity }}
   affinity:
   {{- include "cloudnative.affinity" . | nindent 4 }}
