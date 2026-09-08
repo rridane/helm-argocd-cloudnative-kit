@@ -1,0 +1,39 @@
+# RBAC piloté par groupes OIDC. Les bindings référencent des NOMS de groupes
+# (claim `groups` du token Keycloak), pas des IDs → totalement découplé de la
+# conf Keycloak. Les champs de `rules` sont les champs k8s natifs (apiGroups,
+# resources, verbs, resourceNames, nonResourceURLs).
+
+# ClusterRoles à créer (create: false = juste référencer un rôle existant,
+# ex. le built-in `cluster-admin`).
+clusterRoles: {}
+#   k8s-cap-pod-restart:
+#     rules:
+#       - apiGroups: [""]
+#         resources: [pods]
+#         verbs: [delete]
+#   k8s-cap-pod-extended-view:
+#     # Rôle agrégateur : pas de rules, il absorbe les rôles portant ces labels.
+#     aggregateFromLabels:
+#       - { rbac.authorization.k8s.io/aggregate-to-view: "true" }
+#   cluster-admin:
+#     create: false        # built-in, on ne le crée pas
+
+# Roles namespaced (optionnel).
+namespacedRoles: []
+#   - namespace: app
+#     name: readonly-extra
+#     rules:
+#       - apiGroups: [""]
+#         resources: [secrets]
+#         verbs: [get, list]
+
+# ClusterRoleBindings : groupe(s) OIDC → ClusterRole (cluster-wide).
+clusterRoleBindings: []
+#   - clusterRole: cluster-admin
+#     groups: ["k8s:all:cluster-admin"]
+
+# RoleBindings : groupe(s) OIDC → (Cluster)Role dans un namespace.
+roleBindings: []
+#   - namespace: app
+#     role: k8s-cap-pod-restart
+#     groups: ["k8s:all:pod_restart"]

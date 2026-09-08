@@ -1,0 +1,20 @@
+{{- range $b := .Values.clusterRoleBindings }}
+{{- range $g := $b.groups }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-{{ $b.clusterRole }}-{{ $g | replace ":" "-" }}
+  labels:
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    rbac.rridane.dev/scope: cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $b.clusterRole }}
+subjects:
+  - kind: Group
+    name: {{ $g | quote }}
+    apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}

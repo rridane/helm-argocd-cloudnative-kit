@@ -1,0 +1,38 @@
+{{- range $name, $r := .Values.clusterRoles }}
+{{/* create par défaut à true ; skip UNIQUEMENT si explicitement false.
+     (NB: `$r.create | default true` est faux ici — sprig traite false comme vide.) */}}
+{{- if or (not (hasKey $r "create")) $r.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    {{- with $r.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- with $r.aggregateFromLabels }}
+aggregationRule:
+  clusterRoleSelectors:
+  {{- range . }}
+    - matchLabels:
+        {{- toYaml . | nindent 8 }}
+  {{- end }}
+{{- end }}
+{{- with $r.rules }}
+rules:
+  {{- range . }}
+  - apiGroups: {{ .apiGroups | toJson }}
+    resources: {{ .resources | toJson }}
+    verbs: {{ .verbs | toJson }}
+    {{- with .resourceNames }}
+    resourceNames: {{ . | toJson }}
+    {{- end }}
+    {{- with .nonResourceURLs }}
+    nonResourceURLs: {{ . | toJson }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
