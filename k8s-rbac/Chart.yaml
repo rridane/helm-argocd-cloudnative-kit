@@ -2,8 +2,8 @@ apiVersion: v2
 name: k8s-rbac
 description: |
   RBAC k8s piloté par groupes OIDC : ClusterRoles (avec agrégation), Roles
-  namespaced, et bindings qui associent des groupes OIDC (claim `groups` de
-  Keycloak) à des (Cluster)Roles. Pensé pour l'accès kubectl fédéré par OIDC.
+  namespaced, et bindings qui associent des groupes OIDC (claim `groups` du
+  token) à des (Cluster)Roles. Pensé pour l'accès kubectl fédéré par OIDC.
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

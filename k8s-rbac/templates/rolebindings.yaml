@@ -4,13 +4,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  # Nom incluant le groupe (le module TF d'origine nommait juste `oidc-<role>`,
-  # ce qui collisionnait si plusieurs groupes visaient le même rôle/ns — corrigé).
+  # Le nom inclut le groupe : évite les collisions quand plusieurs groupes
+  # visent le même rôle dans le même namespace.
   name: oidc-{{ $b.role }}-{{ $g | replace ":" "-" }}
   namespace: {{ $b.namespace }}
   labels:
     app.kubernetes.io/managed-by: {{ $.Release.Service }}
-    rbac.rridane.dev/scope: namespace
+    app.kubernetes.io/component: namespace-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

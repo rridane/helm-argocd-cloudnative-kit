@@ -7,7 +7,7 @@ metadata:
   name: oidc-{{ $b.clusterRole }}-{{ $g | replace ":" "-" }}
   labels:
     app.kubernetes.io/managed-by: {{ $.Release.Service }}
-    rbac.rridane.dev/scope: cluster
+    app.kubernetes.io/component: cluster-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
